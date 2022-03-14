@@ -6,10 +6,10 @@
 #include <realm_core/conversions.h>
 #include <realm_io/gis_export.h>
 
-#include <gdal/gdal_priv.h>
-#include <gdal/gdalwarper.h>
-#include <gdal/ogr_spatialref.h>
-#include <gdal/cpl_conv.h>
+#include <gdal_priv.h>
+#include <gdalwarper.h>
+#include <ogr_spatialref.h>
+#include <cpl_conv.h>
 
 namespace realm
 {

@@ -3,7 +3,7 @@
 #ifndef PROJECT_GIS_CONVERSIONS_H
 #define PROJECT_GIS_CONVERSIONS_H
 
-#include <gdal/ogr_spatialref.h>
+#include <ogr_spatialref.h>
 
 #include <realm_core/utm32.h>
 #include <realm_core/wgs84.h>

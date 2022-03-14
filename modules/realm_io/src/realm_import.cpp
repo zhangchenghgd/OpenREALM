@@ -157,8 +157,12 @@ CvGridMap::Ptr io::loadCvGridMap(const std::string &filepath)
     int length;
     elements_read = fread(&length, sizeof(int), 1, file);
 
-    char layer_name[length];
-    elements_read = fread(&layer_name, sizeof(char), length, file);
+    //char layer_name[length];
+    //elements_read = fread(&layer_name, sizeof(char), length, file);
+
+    char* layer_name = new char[length];
+    memset(layer_name, 0, sizeof(char) * length);
+    elements_read = fread(&layer_name[0], sizeof(char), length, file);
 
     int interpolation;
     elements_read = fread(&interpolation, sizeof(int), 1, file);
@@ -182,6 +186,8 @@ CvGridMap::Ptr io::loadCvGridMap(const std::string &filepath)
       throw(std::runtime_error("Error reading binary: Elements read do not match matrix dimension!"));
 
     map->add(std::string(layer_name), data, interpolation);
+
+    delete[] layer_name;
   }
 
   fclose(file);

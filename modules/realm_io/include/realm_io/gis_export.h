@@ -8,9 +8,9 @@
 
 #include <opencv2/core.hpp>
 
-#include <gdal/gdal_priv.h>
-#include <gdal/ogr_spatialref.h>
-#include <gdal/cpl_conv.h>
+#include <gdal_priv.h>
+#include <ogr_spatialref.h>
+#include <cpl_conv.h>
 
 #include <realm_core/cv_grid_map.h>
 #include <realm_core/wgs84.h>

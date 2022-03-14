@@ -5,6 +5,7 @@
 
 #include <realm_core/worker_thread_base.h>
 #include <realm_io/gis_export.h>
+#include <deque>
 
 namespace realm
 {

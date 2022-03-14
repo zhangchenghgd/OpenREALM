@@ -131,9 +131,9 @@ if (CGAL_ENABLED)
     include_directories(${CGAL_INCLUDE_DIRS})
 endif()
 
-add_definitions(
-        -Wno-deprecated-declarations
-)
+# add_definitions(
+#         -Wno-deprecated-declarations
+# )
 
 
 ################################################################################

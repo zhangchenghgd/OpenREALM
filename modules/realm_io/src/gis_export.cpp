@@ -41,7 +41,13 @@ void io::saveGeoTIFF(const CvGridMap &map,
   }
   else
   {
-    cv::Mat img_bands[img_converted.channels()];
+    //cv::Mat img_bands[img_converted.channels()];
+	std::vector< cv::Mat> img_bands;
+	img_bands.resize(img_converted.channels());
+	for (int i = 0; i < img_converted.channels(); ++i)
+	{
+		img_bands[i] = cv::Mat();
+	}
     cv::split(img_converted, img_bands);
 
     for (int i = 0; i < img_converted.channels(); ++i)
@@ -178,7 +184,14 @@ GDALDataset* io::generateMemoryDataset(const cv::Mat &data, const io::GDALDatase
   dataset->SetProjection(pszSRS_WKT);
   CPLFree(pszSRS_WKT);
 
-  cv::Mat img_bands[data.channels()];
+  //cv::Mat img_bands[data.channels()];
+  std::vector< cv::Mat> img_bands;
+  img_bands.resize(data.channels());
+  for (int i = 0; i < data.channels(); ++i)
+  {
+	  img_bands[i] = cv::Mat();
+  }
+
   cv::split(data, img_bands);
 
   for (int i = 1; i <= data.channels(); i++)

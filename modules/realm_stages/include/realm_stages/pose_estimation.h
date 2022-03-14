@@ -4,6 +4,7 @@
 #define PROJECT_POSE_ESTIMATION_STAGE_H
 
 #include <iostream>
+#include <deque>
 
 #include <realm_stages/stage_base.h>
 #include <realm_stages/stage_settings.h>

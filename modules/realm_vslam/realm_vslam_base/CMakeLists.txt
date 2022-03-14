@@ -51,6 +51,8 @@ set(VSLAM_IF_SOURCES ${root}/src/open_vslam.cpp)
 set(VSLAM_IF_COMPILE_FLAG "-DUSE_OPEN_VSLAM")
 message(STATUS "Selected OpenVSLAM for visual pose estimation")
 
+find_package(fbow)
+
 #find_package(ov2slam REQUIRED)
 #find_package(PCL REQUIRED)
 #set(VSLAM_IMPL_LIB ov2slam)
@@ -59,6 +61,16 @@ message(STATUS "Selected OpenVSLAM for visual pose estimation")
 #set(VSLAM_IF_SOURCES ${root}/src/ov2_slam.cpp)
 #set(VSLAM_IF_COMPILE_FLAG "-DUSE_OV2SLAM=ON")
 #message(STATUS "Selected ov2slam for visual pose estimation")
+
+if(MSVC)
+    find_package(SuiteSparse CONFIG)
+else()
+    find_package(SuiteSparse)
+endif()
+
+if(SUITESPARSE_FOUND)
+    include_directories(${SUITESPARSE_INCLUDE_DIRS})
+endif()
 
 
 set(HEADER_FILES
@@ -135,7 +147,7 @@ target_include_directories(${LIBRARY_NAME} PUBLIC
 )
 
 add_definitions(
-		-Wno-deprecated-declarations
+#		-Wno-deprecated-declarations
 		${EIGEN3_DEFINITIONS}
 )
 
