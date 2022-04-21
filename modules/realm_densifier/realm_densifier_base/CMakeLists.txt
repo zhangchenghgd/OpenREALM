@@ -89,7 +89,7 @@ include_directories(
         ${DENSIFIER_IMPL_LIBS_HEADER}
 )
 
-add_library(${LIBRARY_NAME} SHARED
+add_library(${LIBRARY_NAME}
         ${SOURCE_FILES}
         ${HEADER_FILES}
         ${FORM_HEADERS}
