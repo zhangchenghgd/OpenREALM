@@ -1,0 +1,49 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>resource/images/about_30px.png</file>
+        <file>resource/images/production_line_30px.png</file>
+        <file>resource/images/pause_30px.png</file>
+        <file>resource/images/resume_button_30px.png</file>
+        <file>resource/images/home_30px.png</file>
+        <file>resource/images/gps_signal_40px.png</file>
+        <file>resource/images/not_sending_video_frames_16px.png</file>
+        <file>resource/images/not_showing_video_frames_16px.png</file>
+        <file>resource/images/offline_16px.png</file>
+        <file>resource/images/online_16px.png</file>
+        <file>resource/images/sending_video_frames_16px.png</file>
+        <file>resource/images/folder_16px.png</file>
+        <file>resource/images/delete_file_16px.png</file>
+        <file>resource/images/new_file_16px.png</file>
+        <file>resource/images/rename_16px.png</file>
+        <file>resource/images/available_updates_16px.png</file>
+        <file>resource/images/import_16px.png</file>
+        <file>resource/images/collapse_arrow_16px.png</file>
+        <file>resource/images/expand_arrow_16px.png</file>
+        <file>resource/images/launch_30px.png</file>
+        <file>resource/images/logo.png</file>
+        <file>resource/images/play_30px.png</file>
+        <file>resource/images/quadcopter_16px.png</file>
+        <file>resource/images/refresh_30px.png</file>
+        <file>resource/images/stop_30px.png</file>
+        <file>resource/images/video_call_16px.png</file>
+        <file>resource/images/waypoint_map_16px.png</file>
+        <file>resource/images/quadcopter_30px.png</file>
+        <file>resource/images/low_connection_16px.png</file>
+        <file>resource/images/signal_medium_16px.png</file>
+        <file>resource/images/signal_16px.png</file>
+        <file>resource/images/no_connection_16px.png</file>
+        <file>resource/images/red_plane_16px.png</file>
+        <file>resource/images/green_plane_16px.png</file>
+        <file>resource/images/layers_16px.png</file>
+        <file>resource/images/earth_element_16px.png</file>
+    </qresource>
+    <qresource prefix="/logo">
+        <file>resource/logo/logo.ico</file>
+        <file>resource/logo/logo_16.png</file>
+        <file>resource/logo/logo_32.png</file>
+        <file>resource/logo/logo_48.png</file>
+        <file>resource/logo/logo_64.png</file>
+        <file>resource/logo/logo_128.png</file>
+        <file>resource/logo/logo_256.png</file>
+    </qresource>
+</RCC>

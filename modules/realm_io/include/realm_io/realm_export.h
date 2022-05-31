@@ -21,8 +21,9 @@ void saveTimestamp(uint64_t timestamp,
                    const std::string &filename);
 
 void saveTrajectory(uint64_t timestamp,
-                    const cv::Mat &pose,
-                    const std::string &filepath);
+    const cv::Mat& pose,
+    const std::string& filepath,
+    const std::string& opk_filepath = "");
 
 void saveTrajectoryTUM(std::ofstream *file,
                        uint64_t timestamp,
@@ -33,6 +34,16 @@ void saveTrajectoryTUM(std::ofstream *file,
                        double qy,
                        double qz,
                        double qw);
+
+void saveTrajectoryOPK(std::ofstream* file,
+    uint64_t timestamp,
+    double x,
+    double y,
+    double z,
+    double omega,
+    double phi,
+    double kappa,
+    const cv::Mat& R);
 
 /*!
  * @brief Saving a CvGridMap as binary. Data is uncompressed and can therefore be of any opencv type (CV_8UC4, CV_32F, ...).

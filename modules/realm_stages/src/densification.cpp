@@ -227,6 +227,11 @@ Depthmap::Ptr Densification::processStereoReconstruction(const std::deque<Frame:
     if (f == frame_processed)
       continue;
 
+    if (f->getPose().empty())
+    {
+        continue;
+    }
+
     baselines.push_back(stereo::computeBaselineFromPose(frame_processed->getPose(), f->getPose()));
     stringbuffer += std::to_string(baselines.back()) + "m ";
   }

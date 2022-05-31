@@ -81,7 +81,16 @@ CvGridMap::Ptr ortho::backprojectFromGrid(
 
       if (x > 0.0 && x < img.cols && y > 0.0 && y < img.rows)
       {
-        color_data.at<cv::Vec4b>(r, c)      = img.at<cv::Vec4b>((int)y, (int)x);
+          if (img.type() == CV_8UC4)
+          {
+              color_data.at<cv::Vec4b>(r, c) = img.at<cv::Vec4b>((int)y, (int)x);
+          }
+          else if(img.type() == CV_8UC3)
+          {
+              cv::Vec3b img_clr = img.at<cv::Vec3b>((int)y, (int)x);
+              color_data.at<cv::Vec4b>(r, c) = cv::Vec4b(img_clr[0], img_clr[1], img_clr[2], 255);
+          }
+
         elevation_angle.at<float>(r, c)     = static_cast<float>(ortho::internal::computeElevationAngle(t, pt));
         elevated.at<uchar>(r, c)            = is_elevated_val;
         num_observations.at<uint16_t>(r, c) = 1;

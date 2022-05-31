@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DataManagerWidget</class>
+ <widget class="QWidget" name="DataManagerWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>436</width>
+    <height>380</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <property name="leftMargin">
+    <number>3</number>
+   </property>
+   <property name="topMargin">
+    <number>3</number>
+   </property>
+   <property name="rightMargin">
+    <number>3</number>
+   </property>
+   <property name="bottomMargin">
+    <number>3</number>
+   </property>
+   <property name="verticalSpacing">
+    <number>3</number>
+   </property>
+   <item row="0" column="1">
+    <widget class="QToolButton" name="toolButton_2">
+     <property name="toolTip">
+      <string>展开</string>
+     </property>
+     <property name="text">
+      <string>展开</string>
+     </property>
+     <property name="icon">
+      <iconset resource="myrealm.qrc">
+       <normaloff>:/images/resource/images/expand_arrow_16px.png</normaloff>:/images/resource/images/expand_arrow_16px.png</iconset>
+     </property>
+     <property name="autoRaise">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QToolButton" name="toolButton">
+     <property name="toolTip">
+      <string>收起</string>
+     </property>
+     <property name="text">
+      <string>收起</string>
+     </property>
+     <property name="icon">
+      <iconset resource="myrealm.qrc">
+       <normaloff>:/images/resource/images/collapse_arrow_16px.png</normaloff>:/images/resource/images/collapse_arrow_16px.png</iconset>
+     </property>
+     <property name="popupMode">
+      <enum>QToolButton::DelayedPopup</enum>
+     </property>
+     <property name="autoRaise">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="2" column="0" colspan="3">
+    <widget class="QTreeWidget" name="treeWidget">
+     <column>
+      <property name="text">
+       <string>图层</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="myrealm.qrc"/>
+ </resources>
+ <connections/>
+</ui>

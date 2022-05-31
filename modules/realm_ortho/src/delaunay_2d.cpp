@@ -21,10 +21,14 @@ std::vector<cv::Point2i> Delaunay2D::buildMesh(const CvGridMap &grid, const std:
   typedef DelaunayTriangulation::Point CGALPoint;
 
   cv::Mat valid;
-  if (mask.empty())
-    valid = cv::Mat::ones(grid.size(), CV_8UC1)*255;
+  if (!mask.empty() && grid.exists(mask))
+  {
+      valid = grid[mask];
+  }
   else
-    valid = grid[mask];
+  {
+      valid = cv::Mat::ones(grid.size(), CV_8UC1) * 255;
+  }
 
   std::vector< std::pair<CGALPoint, cv::Point2i>> pts;
   pts.reserve(static_cast<size_t>(valid.rows * valid.cols));

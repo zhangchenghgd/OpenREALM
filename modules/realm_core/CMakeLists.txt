@@ -52,6 +52,7 @@ set(HEADER_FILES
         ${root}/include/realm_core/utm32.h
         ${root}/include/realm_core/wgs84.h
         ${root}/include/realm_core/worker_thread_base.h
+        ${root}/include/realm_core/opk.h
 )
 
 set(SOURCE_FILES
@@ -68,6 +69,7 @@ set(SOURCE_FILES
         ${root}/src/cv_grid_map.cpp
         ${root}/src/worker_thread_base.cpp
         ${root}/src/plane_fitter.cpp
+        ${root}/src/opk.cpp
         src/depthmap.cpp)
 
 # Organize the source and header files into groups
@@ -123,6 +125,7 @@ target_link_libraries(${LIBRARY_NAME}
 #         -Wno-deprecated-declarations
 # )
 
+add_definitions(-D_USE_MATH_DEFINES)
 
 ################################################################################
 # Install

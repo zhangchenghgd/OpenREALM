@@ -139,8 +139,8 @@ double DigitalSurfaceModel::computePointCloudGSD(const PointCloud<double> &point
     PointCloud<double>::Point pt = point_cloud.pts[i];
 
     // Preparation of output container
-    tmp_indices.clear();
-    tmp_dists.clear();
+    //tmp_indices.clear();
+    //tmp_dists.clear();
 
     // Initialization
     const double query_pt[3]{pt.x, pt.y, 0.0};

@@ -1,3 +1,4 @@
 [submodule "modules/realm_densifier/realm_densifier_impl/psl"]
 	path = modules/realm_densifier/realm_densifier_impl/psl
-	url = https://github.com/laxnpander/PSL.git
+	url = https://github.com/zhangchenghgd/PSL.git
+	branch = zc_dev

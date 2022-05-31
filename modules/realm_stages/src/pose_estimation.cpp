@@ -654,11 +654,11 @@ void PoseEstimationIO::publishPose(const Frame::Ptr &frame)
   if (m_stage_handle->m_settings_save.save_trajectory_gnss || m_stage_handle->m_settings_save.save_trajectory_visual)
     io::saveTimestamp(frame->getTimestamp(), frame->getFrameId(), m_stage_handle->m_stage_path + "/trajectory/timestamps.txt");
   if (m_stage_handle->m_settings_save.save_trajectory_gnss)
-    io::saveTrajectory(frame->getTimestamp(), frame->getDefaultPose(), m_stage_handle->m_stage_path + "/trajectory/gnss_traj_TUM.txt");
+    io::saveTrajectory(frame->getTimestamp(), frame->getDefaultPose(), m_stage_handle->m_stage_path + "/trajectory/gnss_traj_TUM.txt", m_stage_handle->m_stage_path + "/trajectory/gnss_traj_OPK.txt");
   if (m_stage_handle->m_settings_save.save_trajectory_visual && frame->hasAccuratePose())
-    io::saveTrajectory(frame->getTimestamp(), frame->getPose(), m_stage_handle->m_stage_path + "/trajectory/f_traj_TUM.txt");
+    io::saveTrajectory(frame->getTimestamp(), frame->getPose(), m_stage_handle->m_stage_path + "/trajectory/f_traj_TUM.txt", m_stage_handle->m_stage_path + "/trajectory/f_traj_OPK.txt");
   if (m_stage_handle->m_settings_save.save_trajectory_visual && frame->isKeyframe())
-    io::saveTrajectory(frame->getTimestamp(), frame->getPose(), m_stage_handle->m_stage_path + "/trajectory/kf_traj_TUM.txt");
+    io::saveTrajectory(frame->getTimestamp(), frame->getPose(), m_stage_handle->m_stage_path + "/trajectory/kf_traj_TUM.txt", m_stage_handle->m_stage_path + "/trajectory/kf_traj_OPK.txt");
 
   m_stage_handle->m_transport_pose(frame->getPose(), frame->getGnssUtm().zone, frame->getGnssUtm().band, "output/pose/visual");
 }

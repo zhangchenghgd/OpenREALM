@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>无人机视频实时重建系统</string>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>23</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>30</width>
+     <height>30</height>
+    </size>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
+   <property name="floatable">
+    <bool>true</bool>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_connectDrone"/>
+   <addaction name="separator"/>
+   <addaction name="action_start"/>
+   <addaction name="action_pause"/>
+   <addaction name="action_resume"/>
+   <addaction name="action_stop"/>
+   <addaction name="separator"/>
+   <addaction name="action_homeView"/>
+   <addaction name="action_openProduction"/>
+   <addaction name="separator"/>
+   <addaction name="action_about"/>
+  </widget>
+  <action name="action_start">
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/play_30px.png</normaloff>:/images/resource/images/play_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>开始</string>
+   </property>
+  </action>
+  <action name="action_stop">
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/stop_30px.png</normaloff>:/images/resource/images/stop_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>停止</string>
+   </property>
+  </action>
+  <action name="action_connectDrone">
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/quadcopter_30px.png</normaloff>:/images/resource/images/quadcopter_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>图传</string>
+   </property>
+  </action>
+  <action name="action_homeView">
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/home_30px.png</normaloff>:/images/resource/images/home_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>重置视图</string>
+   </property>
+   <property name="toolTip">
+    <string>重置视图</string>
+   </property>
+  </action>
+  <action name="action_pause">
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/pause_30px.png</normaloff>:/images/resource/images/pause_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>暂停</string>
+   </property>
+   <property name="toolTip">
+    <string>暂停</string>
+   </property>
+  </action>
+  <action name="action_resume">
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/resume_button_30px.png</normaloff>:/images/resource/images/resume_button_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>继续</string>
+   </property>
+   <property name="toolTip">
+    <string>继续</string>
+   </property>
+  </action>
+  <action name="action_openProduction">
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/production_line_30px.png</normaloff>:/images/resource/images/production_line_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>打开成果</string>
+   </property>
+   <property name="toolTip">
+    <string>打开成果文件夹...</string>
+   </property>
+  </action>
+  <action name="action_about">
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/about_30px.png</normaloff>:/images/resource/images/about_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>关于</string>
+   </property>
+   <property name="toolTip">
+    <string>关于</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="myrealm.qrc"/>
+ </resources>
+ <connections/>
+</ui>

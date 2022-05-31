@@ -9,8 +9,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # Dependencies
 ################################################################################
 
-
-if(CMAKE_CUDA_COMPILER)
+find_package(CUDA)
+if (CUDA_FOUND)
     message(STATUS "CUDA found. Compiling densification with CUDA support...\n")
     set(DENSIFIER_WITH_CUDA True)
 else()

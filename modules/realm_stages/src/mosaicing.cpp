@@ -15,7 +15,7 @@ Mosaicing::Mosaicing(const StageSettings::Ptr &stage_set, double rate)
     : StageBase("mosaicing", (*stage_set)["path_output"].toString(), rate, (*stage_set)["queue_size"].toInt(), bool((*stage_set)["log_to_file"].toInt())),
       m_utm_reference(nullptr),
       m_global_map(nullptr),
-      //m_mesher(nullptr),
+      m_mesher(nullptr),
       m_gdal_writer(nullptr),
       m_publish_mesh_nth_iter(0),
       m_publish_mesh_every_nth_kf((*stage_set)["publish_mesh_every_nth_kf"].toInt()),
@@ -42,6 +42,8 @@ Mosaicing::Mosaicing(const StageSettings::Ptr &stage_set, double rate)
 {
   std::cout << "Stage [" << m_stage_name << "]: Created Stage with Settings: " << std::endl;
   stage_set->print();
+
+  m_mesher = std::make_shared<realm::Delaunay2D>();
 
   if (m_settings_save.save_ortho_gtiff_all)
   {
@@ -412,11 +414,11 @@ std::vector<Face> Mosaicing::createMeshFaces(const CvGridMap::Ptr &map)
     mesh_sampled = map;
   }
 
-  //std::vector<cv::Point2i> vertex_ids = _mesher->buildMesh(*mesh_sampled, "valid");
-  //std::vector<Face> faces = cvtToMesh((*mesh_sampled), "elevation", "color_rgb", vertex_ids);
-  //return faces;
+  std::vector<cv::Point2i> vertex_ids = m_mesher->buildMesh(*mesh_sampled, "valid");
+  std::vector<Face> faces = cvtToMesh((*mesh_sampled), "elevation", "color_rgb", vertex_ids);
+  return faces;
   // Placeholder return, there are a few calls that try to use this
-  return std::vector<Face>();
+  //return std::vector<Face>();
 }
 
 void Mosaicing::publish(const Frame::Ptr &frame, const CvGridMap::Ptr &map, const CvGridMap::Ptr &update, uint64_t timestamp)
@@ -428,11 +430,12 @@ void Mosaicing::publish(const Frame::Ptr &frame, const CvGridMap::Ptr &map, cons
 
   m_transport_img((*m_global_map)["color_rgb"], "output/rgb");
   m_transport_img(analysis::convertToColorMapFromCVC1((*m_global_map)["elevation"],
-                                                      valid,
-                                                      cv::COLORMAP_JET), "output/elevation");
+                                                       valid,
+                                                       cv::COLORMAP_JET), "output/elevation");
   m_transport_cvgridmap(m_global_map->getSubmap({"color_rgb"}), m_utm_reference->zone, m_utm_reference->band, "output/full/ortho");
   m_transport_cvgridmap(update->getSubmap({"color_rgb"}), m_utm_reference->zone, m_utm_reference->band, "output/update/ortho");
-  //_transport_cvgridmap(update->getSubmap({"elevation", "valid"}), _utm_reference->zone, _utm_reference->band, "output/update/elevation");
+  //m_transport_cvgridmap(update->getSubmap({"elevation", "valid"}), m_utm_reference->zone, m_utm_reference->band, "output/update/elevation");
+  
 
   if (m_publish_mesh_every_nth_kf > 0 && m_publish_mesh_every_nth_kf == m_publish_mesh_nth_iter)
   {
