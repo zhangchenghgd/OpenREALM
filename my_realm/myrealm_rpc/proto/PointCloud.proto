@@ -1,0 +1,10 @@
+syntax = "proto3";// You can use either proto2 or proto3. Both are supported by srpc
+
+import "CommonData.proto";
+
+package MyREALM.RPC;
+
+message PointCloudMsg {
+    repeated uint32 point_ids = 1;          //  (required) Vector of unique point ids
+    ImageMsg points = 2;                    //  (required) Data of the sparse cloud structured as cv::Mat with row(i) = x,y,z
+};

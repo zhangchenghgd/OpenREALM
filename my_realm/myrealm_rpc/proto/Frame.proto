@@ -1,0 +1,32 @@
+syntax = "proto3";// You can use either proto2 or proto3. Both are supported by srpc
+
+import "CommonData.proto";
+import "Pinhole.proto";
+import "PointCloud.proto";
+import "Depthmap.proto";
+import "CvGridMap.proto";
+import "Georeference.proto";
+
+package MyREALM.RPC;
+
+message FrameMsg {
+    string camera_id = 1;
+    uint32 stage_id = 2;
+    uint64 timestamp = 3;
+    CompressedImageMsg imagedata = 4;
+    PinholeMsg camera_model = 5;
+    QuaternionMsg orientation = 6;
+    GPSMsg gpsdata = 7;
+    PointCloudMsg sparse_cloud = 8 ;
+    DepthMapMsg depthmap = 9;
+    CvGridMapMsg surface_model = 10;
+    CvGridMapMsg orthophoto = 11;
+    float heading = 12;
+    PoseMsg visual_pose = 13;
+    GeoreferenceMsg  georeference = 14;
+    bool do_reset = 15;
+    bool has_accurate_pose = 16;
+    bool is_keyframe = 17;
+    bool is_georeferenced = 18;
+    bool is_surface_elevated = 19;
+};

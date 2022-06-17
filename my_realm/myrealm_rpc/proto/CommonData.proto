@@ -1,0 +1,56 @@
+syntax = "proto3";// You can use either proto2 or proto3. Both are supported by srpc
+
+package MyREALM.RPC;
+
+message CvMatMsg {
+    int32 rows = 1;
+    int32 cols = 2;
+    int32 elt_type = 3;
+    int32 elt_size = 4;
+    bytes mat_data = 5;
+}
+
+message CompressedImageMsg
+{
+    string format = 1;         //  Specifies the format of the data: jpeg, png
+    bytes data = 2;            // Compressed image buffer
+}
+
+message ImageMsg {
+    uint32 height = 1;         // image height, that is, number of rows
+    uint32 width = 2;          // image width, that is, number of columns
+    string encoding = 3;       // Encoding of pixels -- channel meaning, ordering, size
+    bool is_bigendian = 4;     // is this data bigendian?
+    uint32 step = 5;           // Full row length in bytes
+    bytes data = 6;            // actual matrix data, size is (step * rows)
+}
+
+message Vec2Msg {
+    double x = 1;
+    double y = 2;
+}
+
+message Vec3Msg {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+}
+
+message GPSMsg {
+    double longitude = 1;
+    double latitude = 2;
+    double altitude = 3;
+}
+
+message QuaternionMsg {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+    double w = 4;
+}
+
+message PoseMsg {
+    Vec3Msg position = 1;
+    QuaternionMsg orientation = 2;
+};
+

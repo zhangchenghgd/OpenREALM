@@ -1,0 +1,12 @@
+syntax = "proto3";// You can use either proto2 or proto3. Both are supported by srpc
+
+import "Pinhole.proto";
+import "CommonData.proto";
+
+package MyREALM.RPC;
+
+message DepthMapMsg {
+    PinholeMsg camera_model = 1;      // (required) Camera_model containing pinhole parameters of capturing cam
+    PoseMsg pose = 2;                 // (required) Pose during acquisition
+    ImageMsg data = 3;                // (required) Depth information
+};

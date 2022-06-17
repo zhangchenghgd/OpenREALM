@@ -1,0 +1,11 @@
+syntax = "proto3";// You can use either proto2 or proto3. Both are supported by srpc
+
+import "CommonData.proto";
+
+package MyREALM.RPC;
+
+message GeoreferenceMsg {
+    Vec3Msg translation = 1;
+    QuaternionMsg rotation = 2;
+    Vec3Msg scale = 3;
+};

@@ -1,0 +1,14 @@
+syntax = "proto3";// You can use either proto2 or proto3. Both are supported by srpc
+
+import "CommonData.proto";
+
+package MyREALM.RPC;
+
+message CvGridMapMsg {
+    double resolution = 1;           // CvGridMap uni resolution in x-/y-dir
+    Vec3Msg pos = 2;                 // CvGridMap position of roi
+    double length_x = 3;             // CvGridMap length of roi in x
+    double length_y = 4;             // CvGridMap length of roi in y
+    repeated string layers = 5;      // CvGridMap layer names
+    repeated ImageMsg data = 6;      // CvGridMap layer data
+};
