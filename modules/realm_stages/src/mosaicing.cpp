@@ -11,47 +11,47 @@
 using namespace realm;
 using namespace stages;
 
-Mosaicing::Mosaicing(const StageSettings::Ptr &stage_set, double rate)
+Mosaicing::Mosaicing(const StageSettings::Ptr& stage_set, double rate)
     : StageBase("mosaicing", (*stage_set)["path_output"].toString(), rate, (*stage_set)["queue_size"].toInt(), bool((*stage_set)["log_to_file"].toInt())),
-      m_utm_reference(nullptr),
-      m_global_map(nullptr),
-      m_mesher(nullptr),
-      m_gdal_writer(nullptr),
-      m_publish_mesh_nth_iter(0),
-      m_publish_mesh_every_nth_kf((*stage_set)["publish_mesh_every_nth_kf"].toInt()),
-      m_do_publish_mesh_at_finish((*stage_set)["publish_mesh_at_finish"].toInt() > 0),
-      m_downsample_publish_mesh((*stage_set)["downsample_publish_mesh"].toDouble()),
-      m_use_surface_normals(true),
-      m_th_elevation_min_nobs((*stage_set)["th_elevation_min_nobs"].toInt()),
-      m_th_elevation_var((*stage_set)["th_elevation_variance"].toFloat()),
-      m_settings_save({(*stage_set)["split_gtiff_channels"].toInt() > 0,
-                      (*stage_set)["save_ortho_rgb_one"].toInt() > 0,
-                      (*stage_set)["save_ortho_rgb_all"].toInt() > 0,
-                      (*stage_set)["save_ortho_gtiff_one"].toInt() > 0,
-                      (*stage_set)["save_ortho_gtiff_all"].toInt() > 0,
-                      (*stage_set)["save_elevation_one"].toInt() > 0,
-                      (*stage_set)["save_elevation_all"].toInt() > 0,
-                      (*stage_set)["save_elevation_var_one"].toInt() > 0,
-                      (*stage_set)["save_elevation_var_all"].toInt() > 0,
-                      (*stage_set)["save_elevation_obs_angle_one"].toInt() > 0,
-                      (*stage_set)["save_elevation_obs_angle_all"].toInt() > 0,
-                       (*stage_set)["save_elevation_mesh_one"].toInt() > 0,
-                       (*stage_set)["save_num_obs_one"].toInt() > 0,
-                       (*stage_set)["save_num_obs_all"].toInt() > 0,
-                       (*stage_set)["save_dense_ply"].toInt() > 0})
+    m_utm_reference(nullptr),
+    m_global_map(nullptr),
+    m_mesher(nullptr),
+    m_gdal_writer(nullptr),
+    m_publish_mesh_nth_iter(0),
+    m_publish_mesh_every_nth_kf((*stage_set)["publish_mesh_every_nth_kf"].toInt()),
+    m_do_publish_mesh_at_finish((*stage_set)["publish_mesh_at_finish"].toInt() > 0),
+    m_downsample_publish_mesh((*stage_set)["downsample_publish_mesh"].toDouble()),
+    m_use_surface_normals(true),
+    m_th_elevation_min_nobs((*stage_set)["th_elevation_min_nobs"].toInt()),
+    m_th_elevation_var((*stage_set)["th_elevation_variance"].toFloat()),
+    m_settings_save({ (*stage_set)["split_gtiff_channels"].toInt() > 0,
+                    (*stage_set)["save_ortho_rgb_one"].toInt() > 0,
+                    (*stage_set)["save_ortho_rgb_all"].toInt() > 0,
+                    (*stage_set)["save_ortho_gtiff_one"].toInt() > 0,
+                    (*stage_set)["save_ortho_gtiff_all"].toInt() > 0,
+                    (*stage_set)["save_elevation_one"].toInt() > 0,
+                    (*stage_set)["save_elevation_all"].toInt() > 0,
+                    (*stage_set)["save_elevation_var_one"].toInt() > 0,
+                    (*stage_set)["save_elevation_var_all"].toInt() > 0,
+                    (*stage_set)["save_elevation_obs_angle_one"].toInt() > 0,
+                    (*stage_set)["save_elevation_obs_angle_all"].toInt() > 0,
+                     (*stage_set)["save_elevation_mesh_one"].toInt() > 0,
+                     (*stage_set)["save_num_obs_one"].toInt() > 0,
+                     (*stage_set)["save_num_obs_all"].toInt() > 0,
+                     (*stage_set)["save_dense_ply"].toInt() > 0 })
 {
-  std::cout << "Stage [" << m_stage_name << "]: Created Stage with Settings: " << std::endl;
-  stage_set->print();
+    std::cout << "Stage [" << m_stage_name << "]: Created Stage with Settings: " << std::endl;
+    stage_set->print();
 
-  m_mesher = std::make_shared<realm::Delaunay2D>();
+    m_mesher = std::make_shared<realm::Delaunay2D>();
 
-  if (m_settings_save.save_ortho_gtiff_all)
-  {
-    m_gdal_writer.reset(new io::GDALContinuousWriter("mosaicing_gtiff_writer", 100, true));
-    m_gdal_writer->start();
-  }
+    if (m_settings_save.save_ortho_gtiff_all)
+    {
+        m_gdal_writer.reset(new io::GDALContinuousWriter("mosaicing_gtiff_writer", 100, true));
+        m_gdal_writer->start();
+    }
 
-  registerAsyncDataReadyFunctor([=]{ return !m_buffer.empty(); });
+    registerAsyncDataReadyFunctor([=] { return !m_buffer.empty(); });
 }
 
 Mosaicing::~Mosaicing()
@@ -210,6 +210,7 @@ void Mosaicing::saveIter(uint32_t id, const CvGridMap::Ptr &map_update)
     io::saveImageColorMap((*m_global_map)["num_observations"], valid, m_stage_path + "/nobs", "nobs", id, io::ColormapType::NUM_OBS);
   if (m_settings_save.save_ortho_gtiff_all && m_gdal_writer != nullptr)
     m_gdal_writer->requestSaveGeoTIFF(std::make_shared<CvGridMap>(m_global_map->getSubmap({"color_rgb"})), m_utm_reference->zone, m_stage_path + "/ortho/ortho_iter.tif", true, m_settings_save.split_gtiff_channels);
+
 
     //io::saveGeoTIFF(*map_update, "color_rgb", _utm_reference->zone, io::createFilename(_stage_path + "/ortho/ortho_", id, ".tif"));
 }
@@ -421,6 +422,121 @@ std::vector<Face> Mosaicing::createMeshFaces(const CvGridMap::Ptr &map)
   //return std::vector<Face>();
 }
 
+Mesh::Ptr realm::stages::Mosaicing::createMesh(const CvGridMap::Ptr& map)
+{
+    Mesh::Ptr mesh = std::make_shared<Mesh>();
+    CvGridMap::Ptr mesh_sampled;
+    if (m_downsample_publish_mesh > 10e-6)
+    {
+        if (map && map->exists("elevation") && map->exists("color_rgb")) {
+
+            // Downsampling was set by the user in settings
+            LOG_F(INFO, "Downsampling mesh publish to %4.2f [m/gridcell]...", m_downsample_publish_mesh);
+            mesh_sampled = std::make_shared<CvGridMap>(map->cloneSubmap({ "elevation", "color_rgb" }));
+
+            cv::Mat valid = ((*mesh_sampled)["elevation"] == (*mesh_sampled)["elevation"]);
+
+            // TODO: Change resolution correction is not cool -> same in ortho rectification
+            // Check ranges of input elevation, this is necessary to correct resizing interpolation errors
+            double ele_min, ele_max;
+            cv::Point2i min_loc, max_loc;
+            cv::minMaxLoc((*mesh_sampled)["elevation"], &ele_min, &ele_max, &min_loc, &max_loc, valid);
+
+            mesh_sampled->changeResolution(m_downsample_publish_mesh);
+
+            // After resizing through bilinear interpolation there can occure bad elevation values at the border
+            cv::Mat mask_low = ((*mesh_sampled)["elevation"] < ele_min);
+            cv::Mat mask_high = ((*mesh_sampled)["elevation"] > ele_max);
+            (*mesh_sampled)["elevation"].setTo(std::numeric_limits<float>::quiet_NaN(), mask_low);
+            (*mesh_sampled)["elevation"].setTo(std::numeric_limits<float>::quiet_NaN(), mask_high);
+        }
+        else
+        {
+            LOG_F(WARNING, "Could not publish downsampled mesh, no global map existed.");
+        }
+    }
+    else
+    {
+        LOG_F(INFO, "No downsampling of mesh publish...");
+        // No downsampling was set
+        mesh_sampled = map;
+    }
+
+    this->buildMesh(*mesh_sampled, "valid", "elevation", "color_rgb", (*mesh.get()));
+    
+    return mesh;
+}
+
+bool realm::stages::Mosaicing::buildMesh(const CvGridMap& grid, const std::string& mask,
+    const std::string& layer_elevation,
+    const std::string& layer_color, Mesh& mesh)
+{
+    cv::Mat valid;
+    if (!mask.empty() && grid.exists(mask))
+    {
+        valid = grid[mask];
+    }
+    else
+    {
+        valid = cv::Mat::ones(grid.size(), CV_8UC1) * 255;
+    }
+
+    // OPTIONAL
+    cv::Mat color;
+    if (grid.exists(layer_color))
+        color = grid[layer_color];
+
+    size_t vert_num = valid.rows * valid.cols;
+    size_t face_num = (valid.rows - 1) * (valid.cols - 1) * 2;
+    mesh.resize(vert_num, face_num);
+
+    cv::Point3d* verts = mesh.vertices();
+    cv::Vec4b* clrs = mesh.colors();
+    cv::Vec2f* texCoords = mesh.texCoords();
+    size_t* faces = mesh.faces();
+    cv::Mat& texture = mesh.texture();
+
+    // Create and add vertices
+    for (size_t r = 0; r < valid.rows; ++r)
+    {
+        for (size_t c = 0; c < valid.cols; ++c)
+        {
+            if (valid.at<uchar>(r, c) > 0)
+            {
+                cv::Point3d pt3d = grid.atPosition3d(r, c, layer_elevation);
+                //pts.push_back(std::make_pair(CGALPoint(pt.x, pt.y), cv::Point2i(c, r)));
+                verts[r * valid.cols + c] = pt3d;
+                //clrs[r * valid.cols + c] =  color.at<cv::Vec4b>(r, c);
+                texCoords[r * valid.cols + c] = cv::Vec2f(1.0 * c / valid.cols, 1.0 - (1.0 * r / valid.rows));
+
+                if (r < valid.rows - 1 && c < valid.cols - 1)
+                {
+                    size_t v0 = r * valid.cols + c;
+                    size_t v1 = (r + 1) * valid.cols + c;
+                    size_t v2 = (r + 1) * valid.cols + c + 1;
+                    size_t v3 = r * valid.cols + c + 1;
+
+                    size_t f1_0 = ((valid.cols - 1) * r + c) * 2 * 3;
+                    size_t f1_1 = f1_0 + 1;
+                    size_t f1_2 = f1_0 + 2;
+                    size_t f2_0 = f1_0 + 3;
+                    size_t f2_1 = f1_0 + 4;
+                    size_t f2_2 = f1_0 + 5;
+                    faces[f1_0] = v0;
+                    faces[f1_1] = v1;
+                    faces[f1_2] = v2;
+                    faces[f2_0] = v0;
+                    faces[f2_1] = v2;
+                    faces[f2_2] = v3;
+                }
+            }
+        }
+    }
+
+    color.copyTo(texture);
+    return true;
+}
+
 void Mosaicing::publish(const Frame::Ptr &frame, const CvGridMap::Ptr &map, const CvGridMap::Ptr &update, uint64_t timestamp)
 {
   cv::Mat valid = ((*m_global_map)["elevation"] == (*m_global_map)["elevation"]);
@@ -439,8 +555,12 @@ void Mosaicing::publish(const Frame::Ptr &frame, const CvGridMap::Ptr &map, cons
 
   if (m_publish_mesh_every_nth_kf > 0 && m_publish_mesh_every_nth_kf == m_publish_mesh_nth_iter)
   {
-    std::vector<Face> faces = createMeshFaces(map);
-    std::thread t(m_transport_mesh, faces, "output/mesh");
+    /*std::vector<Face> faces = createMeshFaces(map);
+    std::thread t(m_transport_mesh, faces, "output/mesh");*/
+
+    Mesh::Ptr mesh = createMesh(map);
+    std::thread t(m_transport_mesh, mesh, "output/mesh");
+
     t.detach();
     m_publish_mesh_nth_iter = 0;
   }

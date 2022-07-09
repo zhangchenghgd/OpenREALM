@@ -24,8 +24,11 @@ namespace MyREALM
 			osg::PrimitiveSet::LINE_STRIP, 0, vec_arr->size());
 		geom->addPrimitiveSet(drawPts);
 
+		osg::StateSet* ss = geom->getOrCreateStateSet();
+
 		osg::ref_ptr<osg::LineWidth> line_w = new osg::LineWidth(line_width);
-		geom->getOrCreateStateSet()->setAttribute(line_w, osg::StateAttribute::ON);
+		ss->setAttribute(line_w, osg::StateAttribute::ON);
+		ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
 		geom->setDataVariance(osg::Object::DYNAMIC);
 		geom->setUpdateCallback(clb);

@@ -82,7 +82,7 @@ void StageBase::registerImageTransport(const std::function<void(const cv::Mat&, 
   m_transport_img = func;
 }
 
-void StageBase::registerMeshTransport(const std::function<void(const std::vector<Face>&, const std::string&)> &func)
+void StageBase::registerMeshTransport(const std::function<void(const Mesh::Ptr&, const std::string&)> &func)
 {
   m_transport_mesh = func;
 }

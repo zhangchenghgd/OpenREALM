@@ -19,13 +19,14 @@ namespace MyREALM
 		virtual int cancel();
 		virtual void run();
 
-		void setVertics(const osg::Vec3Array& arr);
+		void setVerticsAndColors(const osg::Vec3Array& arr, const osg::Vec4Array& color_arr);
 
-		bool getVertics(osg::Vec3Array& arr);
+		bool getVerticsAndColors(osg::Vec3Array& arr, osg::Vec4Array& color_arr);
 
 	protected:
 		OpenThreads::Mutex _mutex;
-		osg::ref_ptr<osg::Vec3Array> _lineVertics;
+		osg::ref_ptr<osg::Vec3Array> _vertics;
+		osg::ref_ptr<osg::Vec4Array> _colors;
 		bool _done;
 		bool _dirty;
 	};

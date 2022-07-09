@@ -5,7 +5,7 @@ DataManagerWidget::DataManagerWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::DataManagerWidget),
     m_flightGnssLine(nullptr),
-    m_flightVisualLine(nullptr),
+    m_flightVisualLine(nullptr), m_sparse(nullptr),m_dense(nullptr),
     m_faces(nullptr)
 {
     ui->setupUi(this);
@@ -26,6 +26,16 @@ void DataManagerWidget::setFlightGnssLine(osg::Node* node)
 void DataManagerWidget::setFlightVisualLine(osg::Node* node)
 {
     m_flightVisualLine = node;
+}
+
+void DataManagerWidget::setSparse(osg::Node* node)
+{
+    m_sparse = node;
+}
+
+void DataManagerWidget::setDense(osg::Node* node)
+{
+    m_dense = node;
 }
 
 void DataManagerWidget::setFaces(osg::Node* node)
@@ -52,6 +62,14 @@ void DataManagerWidget::on_treeWidget_itemChanged(
     }
     else if (v == 3)
     {
+        m_sparse->setNodeMask(msk);
+    }
+    else if (v == 4)
+    {
+        m_dense->setNodeMask(msk);
+    }
+    else if (v == 5)
+    {
         m_faces->setNodeMask(msk);
     }
 
@@ -77,14 +95,28 @@ void DataManagerWidget::updateTreeItems()
     visual_line_item->setCheckState(0, Qt::Checked);
     visual_line_item->setData(0, Qt::UserRole, 2);
 
+    QTreeWidgetItem* sparse_item = new QTreeWidgetItem;
+    sparse_item->setText(0, QStringLiteral("稀疏点云"));
+    sparse_item->setIcon(0, QIcon(":/images/resource/images/red_plane_16px.png"));
+    sparse_item->setCheckState(0, Qt::Checked);
+    sparse_item->setData(0, Qt::UserRole, 3);
+
+    QTreeWidgetItem* dense_item = new QTreeWidgetItem;
+    dense_item->setText(0, QStringLiteral("密集点云"));
+    dense_item->setIcon(0, QIcon(":/images/resource/images/red_plane_16px.png"));
+    dense_item->setCheckState(0, Qt::Checked);
+    dense_item->setData(0, Qt::UserRole, 4);
+
     QTreeWidgetItem* faces_item = new QTreeWidgetItem;
     faces_item->setText(0, QStringLiteral("重建模型"));
     faces_item->setIcon(0, QIcon(":/images/resource/images/earth_element_16px.png"));
     faces_item->setCheckState(0, Qt::Checked);
-    faces_item->setData(0, Qt::UserRole, 3);
+    faces_item->setData(0, Qt::UserRole, 5);
 
     root_item->addChild(gnss_line_item);
     root_item->addChild(visual_line_item);
+    root_item->addChild(sparse_item);
+    root_item->addChild(dense_item);
     root_item->addChild(faces_item);
     ui->treeWidget->addTopLevelItem(root_item);
 

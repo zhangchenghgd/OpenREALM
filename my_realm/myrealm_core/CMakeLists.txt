@@ -19,7 +19,6 @@ find_package(PCL 1.7 REQUIRED)
 find_package(CGAL REQUIRED)
 find_package(glog  CONFIG REQUIRED)
 
-
 find_package(OpenSceneGraph 3.6.5 REQUIRED osgDB osgGA osgUtil osgText osgViewer osgWidget)
 
 set(JoFmvTK_DIR "F:/OpenREALM2/jouav_media_kit/JoFmvTK-release-win64-gdgt-20220321-01")
@@ -43,7 +42,8 @@ set(HEAD_FILES
 	Conversions.h
 	TrajSceneNode.h
 	SparseSceneNode.h
-	FacesSceneNode.h
+	MeshSceneNode.h
+	FrustumSceneNode.h
 	)
 	
 set(SRC_FILES
@@ -60,7 +60,8 @@ set(SRC_FILES
 	Conversions.cpp
 	TrajSceneNode.cpp
 	SparseSceneNode.cpp
-	FacesSceneNode.cpp
+	MeshSceneNode.cpp
+	FrustumSceneNode.cpp
 	)
 
 add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -DGLOG_NO_ABBREVIATED_SEVERITIES -DMyREALM_Core_DLL_EXPORT)

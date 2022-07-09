@@ -11,6 +11,9 @@
 
 namespace MyREALM
 {
+	/**
+	 * @brief 轨迹线接收集合顶点线程.
+	 */
 	class TrajReceiverThread : public OpenThreads::Thread
 	{
 	public:
@@ -25,7 +28,7 @@ namespace MyREALM
 
 	protected:
 		OpenThreads::Mutex _mutex;
-		osg::ref_ptr<osg::Vec3Array> _lineVertics;
+		osg::ref_ptr<osg::Vec3Array> _lineVertics;      // 轨迹线顶点
 		bool _done;
 		bool _dirty;
 	};
@@ -43,7 +46,9 @@ namespace MyREALM
 		TrajReceiverThread* m_thread;
 	};
 
-
+	/**
+	 * @brief 创建轨迹线叶节点.
+	 */
 	osg::ref_ptr<osg::Geode> createTrajGeode(const osg::Vec4& color, float line_width,
 		TrajDrawCallback* clb);
 

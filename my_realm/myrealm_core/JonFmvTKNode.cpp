@@ -27,8 +27,9 @@ namespace MyREALM
 		_id_curr_vtk_frame(0),
 		_gps_delay_ms(0),
 		_next_frame_time(0),
-		_vtk_flag(1),
-		_vtk(nullptr)
+		_requireDisconnect(false),
+		_vtk(nullptr),
+		_ConnectCLB(NULL)
 	{
 		readParams();
 		setPaths();
@@ -68,9 +69,10 @@ namespace MyREALM
 
 	JonFmvTKNode::~JonFmvTKNode()
 	{
-		if (_vtk_flag)
+		if (_vtk)
 		{
-			_vtk_flag = 0;
+			_requireDisconnect = true;
+
 			while (isRunning()) YieldCurrentThread();
 		}
 	}
@@ -126,30 +128,51 @@ namespace MyREALM
 		_pub_frame->pubFrame(frame);
 	}
 
+	void JonFmvTKNode::updateConnectStatus(ConnectStatus status)
+	{
+		_connectStatus = status;
+		if (_ConnectCLB)
+		{
+			_ConnectCLB((int)status);
+		}
+	}
+
 	int JonFmvTKNode::cancel()
 	{
-		_vtk_flag = 0;
-		while (isRunning()) YieldCurrentThread();
+		if (_vtk)
+		{
+			_requireDisconnect = true;
+			while (isRunning()) YieldCurrentThread();
+		}
 		return 0;
 	}
 
 	void JonFmvTKNode::run()
 	{
 		_id_curr_vtk_frame = 0;
-		_vtk_flag = 1;
 		_pause = false;
+		_requireDisconnect = false;
+
 		// 创建一个实例
 		_vtk = jav_vtk_create();
-		
+
 		JavVtkOpenThread* vtkOpenTd = 
-			new JavVtkOpenThread(_vtk, _url, &_vtk_flag, this);
+			new JavVtkOpenThread(_vtk, _url, this);
 
 		vtkOpenTd->startThread();
 
 		do
 		{
-			OpenThreads::Thread::microSleep(10000);
-		} while (_vtk_flag);
+			if (_requireDisconnect)
+			{
+				_requireDisconnect = false;
+				break;
+			}
+			else
+			{
+				OpenThreads::Thread::microSleep(10000);
+			}
+		} while (_connectStatus == Connecting || _connectStatus == ConnectSuccess);
 
 		// 结束处理流程，如果open还未返回，此时会返回
 		jav_vtk_close(_vtk);
@@ -166,6 +189,8 @@ namespace MyREALM
 		delete vtkOpenTd;
 
 		_vtk = nullptr;
+
+		updateConnectStatus(Disconnect);
 	}
 
 	void JonFmvTKNode::pause()
@@ -255,6 +280,11 @@ namespace MyREALM
 	
 	}
 
+	void JonFmvTKNode::bindJoUAVConnectCLB(JoUAVConnectCLB clb)
+	{
+		_ConnectCLB = clb;
+	}
+
 
 	static void decoded_frame_callback(JoFmvTKFrame* frame, void* opaque)
 	{
@@ -282,9 +312,9 @@ namespace MyREALM
 
 
 	JavVtkOpenThread::JavVtkOpenThread(jav_vtk* vtk, 
-		const std::string& url, int* flag, void* opaque)
+		const std::string& url, JonFmvTKNode* opaque)
 		:OpenThreads::Thread(),
-		_vtk(vtk), _url(url), _opaque(opaque), _flag(flag)
+		_vtk(vtk), _url(url), _opaque(opaque)
 	{
 
 	}
@@ -296,6 +326,7 @@ namespace MyREALM
 
 	void JavVtkOpenThread::run()
 	{
+		_opaque->updateConnectStatus(JonFmvTKNode::Connecting);
 		auto result = jav_vtk_open_cb(
 			_vtk,                    // 实例句柄
 			_url.c_str(),            // 视频流地址
@@ -308,10 +339,10 @@ namespace MyREALM
 	
 		if (result != 0) {
 			std::cout << "fmv tk open cb failed" << std::endl;
-			if (_flag) { *_flag = 0; }
+			_opaque->updateConnectStatus(JonFmvTKNode::ConnectFailed);
 		}
 		else {
-			std::cout << "fmv tk open cb success" << std::endl;
+			_opaque->updateConnectStatus(JonFmvTKNode::ConnectSuccess);
 		}
 	}
 

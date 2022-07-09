@@ -20,7 +20,9 @@ namespace MyREALM
 	using SubTrajFun = std::function<void(const std::vector<cv::Vec3d>& traj)>;
 	using SubGnssBaseFun = std::function<void(const cv::Vec3d& gnss_base)>;
 	using SubSparseFun = std::function<void(const realm::PointCloud::Ptr& sparse_cloud)>;
-	using SubFacesFun = std::function<void(const std::vector<realm::Face>& faces)>;
+	/*using SubFacesFun = std::function<void(const std::vector<realm::Face>& faces)>;*/
+	using SubMeshFun = std::function<void(const realm::Mesh::Ptr& mesh)>;
+	using SubCvGridMapFun = std::function<void(const realm::CvGridMap& map, uint8_t zone, char band)>;
 
 	class MyREALM_Core_API MySubscriber
 	{
@@ -44,7 +46,11 @@ namespace MyREALM
 
 		void subSparse(const realm::PointCloud::Ptr& sparse_cloud);
 
-		void subFaces(const std::vector<realm::Face>& faces);
+		void subFaces(const realm::Mesh::Ptr& mesh);
+
+		void subOrtho(const realm::CvGridMap& ortho, uint8_t zone, char band);
+
+		void subElevation(const realm::CvGridMap& elevation, uint8_t zone, char band);
 
 		void bindSubFrameFunc(SubFrameFun func);
 
@@ -60,9 +66,13 @@ namespace MyREALM
 
 		void bindSubSparseFunc(SubSparseFun func);
 
-		void bindSubFacesFunc(SubFacesFun func);
+		void bindSubMeshFunc(SubMeshFun func);
 
 		void bindSubImageFunc(SubImageFun func);
+
+		void bindSubOrthoFunc(SubCvGridMapFun func);
+
+		void bindSubElevationFunc(SubCvGridMapFun func);
 
 	private:
 		SubFrameFun m_SubFrameFunc;
@@ -72,8 +82,11 @@ namespace MyREALM
 		SubTrajFun m_SubTrajFun;
 		SubGnssBaseFun m_SubGnssBaseFun;
 		SubSparseFun m_SubSparseFun;
-		SubFacesFun m_SubFacesFunc;
+		SubMeshFun m_SubMeshFunc;
 		SubImageFun m_SubImageFunc;
+		SubCvGridMapFun m_SubOrthoFunc;
+		SubCvGridMapFun m_SubElevationFunc;
+
 	};
 
 	typedef std::unordered_map<std::string, std::shared_ptr<MySubscriber>> MySubscribers;

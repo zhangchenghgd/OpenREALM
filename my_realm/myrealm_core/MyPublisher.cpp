@@ -14,10 +14,10 @@ namespace MyREALM
 
 	void MyPublisher::pubFrame(const realm::Frame::Ptr& frame)
 	{
-		for(MySubscribers::iterator it = m_subscribers.begin();
+		for (MySubscribers::iterator it = m_subscribers.begin();
 			it != m_subscribers.end(); ++it)
 		{
-			return it->second->subFrame(frame);
+			it->second->subFrame(frame);
 		}
 	}
 
@@ -26,7 +26,7 @@ namespace MyREALM
 		for (MySubscribers::iterator it = m_subscribers.begin();
 			it != m_subscribers.end(); ++it)
 		{
-			return it->second->subSparse(sparse_cloud);
+			it->second->subSparse(sparse_cloud);
 		}
 	}
 
@@ -52,17 +52,32 @@ namespace MyREALM
 		}
 	}
 
-	void MyPublisher::pubMesh(const std::vector<realm::Face>& faces)
+	void MyPublisher::pubMesh(const realm::Mesh::Ptr& mesh)
 	{
 		for (MySubscribers::iterator it = m_subscribers.begin();
 			it != m_subscribers.end(); ++it)
 		{
-			it->second->subFaces(faces);
+			it->second->subFaces(mesh);
 		}
 	}
 
-	void MyPublisher::pubCvGridMap(const realm::CvGridMap& map)
+
+	void MyPublisher::pubOrtho(const realm::CvGridMap& map, uint8_t zone, char band)
 	{
+		for (MySubscribers::iterator it = m_subscribers.begin();
+			it != m_subscribers.end(); ++it)
+		{
+			it->second->subOrtho(map, zone, band);
+		}
+	}
+
+	void MyPublisher::pubElevation(const realm::CvGridMap& map, uint8_t zone, char band)
+	{
+		for (MySubscribers::iterator it = m_subscribers.begin();
+			it != m_subscribers.end(); ++it)
+		{
+			it->second->subElevation(map, zone, band);
+		}
 	}
 
 	void MyPublisher::pubOutputDir(const std::string& dir)
@@ -70,7 +85,7 @@ namespace MyREALM
 		for (MySubscribers::iterator it = m_subscribers.begin();
 			it != m_subscribers.end(); ++it)
 		{
-			 it->second->subOutDir(dir);
+			it->second->subOutDir(dir);
 		}
 	}
 
@@ -79,7 +94,7 @@ namespace MyREALM
 		for (MySubscribers::iterator it = m_subscribers.begin();
 			it != m_subscribers.end(); ++it)
 		{
-			 it->second->subGnssBase(gnss_base);
+			it->second->subGnssBase(gnss_base);
 		}
 	}
 
@@ -88,7 +103,7 @@ namespace MyREALM
 		for (MySubscribers::iterator it = m_subscribers.begin();
 			it != m_subscribers.end(); ++it)
 		{
-			 it->second->subTrajectory(traj);
+			it->second->subTrajectory(traj);
 		}
 	}
 

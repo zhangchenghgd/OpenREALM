@@ -54,6 +54,7 @@
    <addaction name="action_resume"/>
    <addaction name="action_stop"/>
    <addaction name="separator"/>
+   <addaction name="action_flowFrameView"/>
    <addaction name="action_homeView"/>
    <addaction name="action_openProduction"/>
    <addaction name="separator"/>
@@ -144,6 +145,21 @@
    </property>
    <property name="toolTip">
     <string>关于</string>
+   </property>
+  </action>
+  <action name="action_flowFrameView">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="myrealm.qrc">
+     <normaloff>:/images/resource/images/vision_30px.png</normaloff>:/images/resource/images/vision_30px.png</iconset>
+   </property>
+   <property name="text">
+    <string>跟随视频帧</string>
+   </property>
+   <property name="toolTip">
+    <string>跟随视频帧</string>
    </property>
   </action>
  </widget>

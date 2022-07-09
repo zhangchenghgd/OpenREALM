@@ -24,6 +24,7 @@
 
 #include <osg/Geode>
 #include <osg/Group>
+#include <osg/MatrixTransform>
 #include <osg/Callback>
 #include <OpenThreads/Thread>
 #include <OpenThreads/Mutex>
@@ -33,37 +34,51 @@
 #include "NodeParas.h"
 #include "TrajSceneNode.h"
 #include "SparseSceneNode.h"
-#include "FacesSceneNode.h"
+#include "MeshSceneNode.h"
+#include "FrustumSceneNode.h"
 
 
 using namespace realm;
 
 namespace MyREALM
 {
+
+	using FollowFrameViewCLB = std::function<void(const osg::Matrix& view_mat)>;
+
 	class MyREALM_Core_API Scene3DNode : public OpenThreads::Thread
 	{
 	public:
 		Scene3DNode(const NodeParas& node_paras);
 		~Scene3DNode();
 
-		osg::Geode* visualTrajNode();
+		osg::Node* visualTrajNode();
 
-		osg::Geode* gnssTrajNode();
+		osg::Node* gnssTrajNode();
 
-		osg::Geode* sparseNode();
+		osg::Node* sparseNode();
 
-		osg::Geode* facesNode();
+		osg::Node* denseNode();
+
+		//osg::Group* facesNode();
+
+		osg::Node* meshNode();
+
+		osg::Node* visualPoseFrustumNode();
+
+		osg::Node* gnssPoseFrustumNode();
 
 		virtual int cancel();
 
 		virtual void run();
+
+
+		void bindFollowFrameViewCLB(FollowFrameViewCLB clb);
 
 	private:
 
 		OpenThreads::Mutex _mutex;
 		bool _done;
 		bool _dirty;
-		
 
 		// camera info
 		std::string _id_camera;
@@ -72,16 +87,20 @@ namespace MyREALM
 		//ros::NodeHandle _nh;
 		NodeParas _node_paras;
 
-		// ros communication handles
+		std::shared_ptr<MySubscriber> _sub_output_dir;
 		std::shared_ptr<MySubscriber> _sub_input_frame;
-		std::shared_ptr<MySubscriber> _sub_input_pose;
+		std::shared_ptr<MySubscriber> _sub_visual_pose;
+		std::shared_ptr<MySubscriber> _sub_gnss_pose;
 		std::shared_ptr<MySubscriber> _sub_gnss_traj;
 		std::shared_ptr<MySubscriber> _sub_visual_traj;
-		std::shared_ptr<MySubscriber> _sub_gnss_base; 
+		std::shared_ptr<MySubscriber> _sub_gnss_base;
 
 		std::shared_ptr<MySubscriber> _sub_sparse;
+		std::shared_ptr<MySubscriber> _sub_dense;
 		std::shared_ptr<MySubscriber> _sub_faces;
-		
+		std::shared_ptr<MySubscriber> _sub_ortho;
+		std::shared_ptr<MySubscriber> _sub_elevation;
+
 		// working paths
 		std::string _path_working_directory;
 		std::string _path_profile;
@@ -89,6 +108,8 @@ namespace MyREALM
 
 		// working directories
 		std::string _dir_date_time;
+
+		std::string _mesh_output_directory;
 
 		// filename of settings
 		std::string _file_settings_stage;
@@ -100,11 +121,17 @@ namespace MyREALM
 		// topics
 		std::string _topic_prefix;
 		std::string _topic_frame_in;
+		std::string _topic_visual_pose_in;
 		std::string _topic_visual_traj_in;
+		std::string _topic_gnss_pose_in;
 		std::string _topic_gnss_traj_in;
 		std::string _topic_gnss_base_in;
 		std::string _topic_sparse_in;
+		std::string _topic_dense_in;
 		std::string _topic_faces_in;
+		std::string _topic_update_ortho_in;
+		std::string _topic_update_elevation_in;
+		std::string _sub_output_dir_in;
 
 		cv::Vec3d _gnss_base_wgs84;
 		cv::Vec3d _gnss_base_utm;
@@ -114,27 +141,39 @@ namespace MyREALM
 		osg::ref_ptr<osg::Geode> m_visualTraj;
 		osg::ref_ptr<osg::Geode> m_gnssTraj;
 		osg::ref_ptr<osg::Geode> m_sparse;
-		osg::ref_ptr<osg::Geode> m_faces;
+		osg::ref_ptr<osg::Geode> m_dense;
+		osg::ref_ptr<osg::Group> m_mesh;
+		//osg::ref_ptr<osg::Group> m_faces;
+		osg::ref_ptr<osg::MatrixTransform> m_gnssPoseFrustum;
+		osg::ref_ptr<osg::MatrixTransform> m_visualPoseFrustum;
 
 		osg::ref_ptr<TrajDrawCallback> m_visualTrajCLB;
 		osg::ref_ptr<TrajDrawCallback> m_gnssTrajCLB;
 		osg::ref_ptr<SparseDrawCallback> m_sparseCLB;
-		osg::ref_ptr<FacesDrawCallback> m_facesCLB;
+		osg::ref_ptr<SparseDrawCallback> m_denseCLB;
+		osg::ref_ptr<FacesDrawCallback> m_meshCLB;
 
 		TrajReceiverThread* m_visualTrajThread;
 		TrajReceiverThread* m_gnssTrajThread;
 		SparseReceiverThread* m_sparseThread;
-		FacesReceiverThread* m_facesThread;
+		SparseReceiverThread* m_denseThread;
+		FacesReceiverThread* m_meshThread;
+
+		FollowFrameViewCLB m_followFrameViewCLB;
 
 		// Initialization
 		void readParams();
 		void readStageSettings();
 		void setPaths();
 
+		void subOutputPath(const std::string& path);
+
 		// ros communication functions
 		void subFrame(const realm::Frame::Ptr& frame);
 
-		void subPose(const cv::Mat& pose);
+		void subGnssPose(const cv::Mat& pose, uint8_t zone, char band);
+
+		void subVisualPose(const cv::Mat& pose, uint8_t zone, char band);
 
 		void subVisualTraj(const std::vector<cv::Vec3d>& traj);
 
@@ -144,7 +183,13 @@ namespace MyREALM
 
 		void subSparse(const realm::PointCloud::Ptr& sparse_cloud);
 
-		void subFaces(const  std::vector<realm::Face>& faces);
+		void subDense(const realm::PointCloud::Ptr& sparse_cloud);
+
+		void subMesh(const realm::Mesh::Ptr& mesh);
+
+		void subOrtho(const realm::CvGridMap& map, uint8_t zone, char band);
+
+		void subElevation(const realm::CvGridMap& map, uint8_t zone, char band);
 
 	};
 }

@@ -141,7 +141,7 @@ namespace MyREALM
 		void pubPointCloud(const PointCloud::Ptr& sparse_cloud, const std::string& topic);
 		void pubImage(const cv::Mat& img, const std::string& topic);
 		void pubDepthMap(const cv::Mat& img, const std::string& topic);
-		void pubMesh(const std::vector<Face>& faces, const std::string& topic);
+		void pubMesh(const realm::Mesh::Ptr& mesh, const std::string& topic);
 
 		// master publish
 		void pubTrajectory(const std::vector<cv::Vec3d>& traj, const std::string& topic);

@@ -11,6 +11,7 @@
 #include "OsgWidget.h"
 #include "FrameWidget.h"
 #include "DataManagerWidget.h"
+#include "UAVConDialog.h"
 #include <osg/Camera>
 #include <osgViewer/Viewer>
 #include <osgDB/ReaderWriter>
@@ -22,6 +23,7 @@
 #include "FrameViewNode.h"
 #include "grabber_exiv2_node.h"
 #include "JonFmvTKNode.h"
+#include <QDebug>
 
 
 using namespace std;
@@ -62,13 +64,19 @@ MainWindow::MainWindow(QWidget* parent) :
 
 	this->setupStatusBar();
 
+
+	m_uavConDialog = new UAVConDialog(this);
+
 	m_flightGnssLine = new osg::Group;
 	m_flightVisualLine = new osg::Group;
 	m_sparseCloud = new osg::Group;
+	m_denseCloud = new osg::Group;
 	m_faces = new osg::Group;
 	m_dataMgrWidget->setFlightGnssLine(m_flightGnssLine);
 	m_dataMgrWidget->setFlightVisualLine(m_flightVisualLine);
-	m_dataMgrWidget->setFaces(m_sparseCloud);
+	m_dataMgrWidget->setSparse(m_sparseCloud);
+	m_dataMgrWidget->setDense(m_denseCloud);
+	m_dataMgrWidget->setFaces(m_faces);
 
 
 	m_osgWidget = new OsgWidget(this);
@@ -76,6 +84,16 @@ MainWindow::MainWindow(QWidget* parent) :
 	this->setCentralWidget(m_osgWidget);
 
 	connect(m_osgWidget, SIGNAL(initialized()), this, SLOT(initOsg()));
+
+	connect(this, SIGNAL(joUAVConnectStatusChangedSignal(int)),
+		this, SLOT(on_joUAVConnectStatusChanged(int)),
+		Qt::ConnectionType::QueuedConnection);
+
+	connect(m_uavConDialog, SIGNAL(disconnect()),
+		this, SLOT(on_connDialog_disconnect()));
+
+	connect(m_uavConDialog, SIGNAL(minimized()),
+		this, SLOT(on_connDialog_minimized()));
 }
 
 MainWindow::~MainWindow()
@@ -154,6 +172,35 @@ void MainWindow::displayTrackedImage(const cv::Mat& img)
 	}
 }
 
+void MainWindow::joUAVConnectStatusChanged(int status)
+{
+	emit joUAVConnectStatusChangedSignal(status);
+}
+
+void MainWindow::followFrameViewChanged(const osg::Matrix& view_mat)
+{
+	if (m_followFrameView)
+	{
+		osg::Vec3 eye, center, up;
+		m_osgWidget->getOsgViewer()->getCamera()->getViewMatrixAsLookAt(eye, center, up);
+		osg::Vec3 vec = center - eye; 
+		vec.normalize();
+
+		osg::Vec3 eye2, center2, up2;
+		//view_mat.getLookAt(eye2, center2, up2);
+		center = view_mat.getTrans();
+
+		float dist = (center - eye).length();
+
+		eye = center - (vec * dist);
+
+		m_osgWidget->getOsgViewer()->getCamera()->setViewMatrixAsLookAt(eye, center, up);
+
+		//m_manipulator->setByMatrix(view_mat);
+
+	}
+}
+
 void MainWindow::on_action_connectDrone_triggered()
 {
 	UAVImageTransDialog UAVDialog;
@@ -206,15 +253,13 @@ void MainWindow::on_action_start_triggered()
 	if (frameViewNode) frameViewNode->startThread();
 
 
-	this->m_connStatusLabel->setPixmap(QPixmap(":/images/resource/images/signal_16px.png"));
-	this->m_connStatusLabel->setToolTip(QStringLiteral("已连接"));
-	this->m_nodeStatus->setText(QStringLiteral("正在处理..."));
-
 	ui->action_start->setEnabled(false);
 	ui->action_pause->setEnabled(true);
 	ui->action_resume->setEnabled(false);
 	ui->action_stop->setEnabled(true);
 
+	m_uavConDialog->setWindowModality(Qt::NonModal);
+	m_uavConDialog->showNormal();
 }
 
 void MainWindow::on_action_pause_triggered()
@@ -306,9 +351,6 @@ void MainWindow::on_action_stop_triggered()
 		frameViewNode = nullptr;
 	}
 
-	this->m_connStatusLabel->setPixmap(QPixmap(":/images/resource/images/no_connection_16px.png"));
-	this->m_connStatusLabel->setToolTip(QStringLiteral("已连接"));
-	this->m_nodeStatus->setText(QStringLiteral("已停止"));
 
 	ui->action_start->setEnabled(true);
 	ui->action_pause->setEnabled(false);
@@ -339,6 +381,10 @@ void MainWindow::create_vtkNode()
 	node_paras["config/opt/working_directory"] = m_frameWorkCfg.workDir.toLocal8Bit().toStdString();
 
 	vtkNode = new MyREALM::JonFmvTKNode(node_paras);
+	MyREALM::JoUAVConnectCLB joUAVConCLB = std::bind(&MainWindow::joUAVConnectStatusChanged,
+		this, std::placeholders::_1);
+	vtkNode->bindJoUAVConnectCLB(joUAVConCLB);
+	//joUAVConnectStatusChanged
 }
 
 void MainWindow::create_scene3DNode()
@@ -354,15 +400,25 @@ void MainWindow::create_scene3DNode()
 
 	scene3DNode = new MyREALM::Scene3DNode(node_paras);
 
-	osg::Geode* visualTraj = scene3DNode->visualTrajNode();
-	osg::Geode* gnssTraj = scene3DNode->gnssTrajNode();
-	osg::Geode* sparse = scene3DNode->sparseNode();
-	osg::Geode* faces = scene3DNode->facesNode();
+	osg::Node* visualTraj = scene3DNode->visualTrajNode();
+	osg::Node* gnssTraj = scene3DNode->gnssTrajNode();
+	osg::Node* sparse = scene3DNode->sparseNode();
+	osg::Node* dense = scene3DNode->denseNode();
+	osg::Node* mesh = scene3DNode->meshNode();
+	osg::Node* visualPoseFrustum= scene3DNode->visualPoseFrustumNode();
+	osg::Node* gnssPoseFrustum = scene3DNode->gnssPoseFrustumNode();
 
 	this->m_flightVisualLine->addChild(visualTraj);
 	this->m_flightGnssLine->addChild(gnssTraj);
+	this->m_flightVisualLine->addChild(visualPoseFrustum);
+	this->m_flightGnssLine->addChild(gnssPoseFrustum);
 	this->m_sparseCloud->addChild(sparse);
-	this->m_faces->addChild(faces);
+	this->m_denseCloud->addChild(dense);
+	this->m_faces->addChild(mesh);
+
+	MyREALM::FollowFrameViewCLB followCLB = std::bind(&MainWindow::followFrameViewChanged,
+		this, std::placeholders::_1);
+	scene3DNode->bindFollowFrameViewCLB(followCLB);
 }
 
 void MainWindow::create_frameViewNode()
@@ -465,11 +521,38 @@ void MainWindow::setupStatusBar()
 	this->statusBar()->addWidget(m_connAddrLabel);
 }
 
+void MainWindow::on_action_flowFrameView_triggered(bool check)
+{
+	m_followFrameView = check;
+	if (m_followFrameView)
+	{
+		m_osgWidget->getOsgViewer()->setCameraManipulator(nullptr);
+	}
+	else
+	{
+		m_osgWidget->getOsgViewer()->setCameraManipulator(m_manipulator.get(), false);
+	}
+}
+
 
 void MainWindow::on_action_homeView_triggered()
 {
+	osg::BoundingSphere bs = m_sceneRoot->computeBound();
+	osg::Vec3 center = bs.center();
+	float r =  bs.radius();
+
+	osg::Vec3 vec(-r, r, -r / 2);
+	osg::Vec3 eye = center - vec;
+	osg::Vec3 right = vec ^ osg::Vec3(0, 0, 1);
+	osg::Vec3 up = right ^ vec;
+
+
+	m_manipulator->setHomePosition(eye, center, up);
+
+
 	m_manipulator->home(0);
 }
+
 
 void MainWindow::on_action_openProduction_triggered()
 {
@@ -491,6 +574,63 @@ void MainWindow::on_action_about_triggered()
 		.arg(qApp->organizationName()));
 }
 
+void MainWindow::on_joUAVConnectStatusChanged(int status)
+{
+	static QMap<int, QString> status_labels = {
+		{0,QStringLiteral("未连接.")},
+		{1,QStringLiteral("连接中...")},
+		{2,QStringLiteral("连接成功!")},
+		{3,QStringLiteral("连接失败!")},
+	};
+
+	QString sta = status_labels.value(status, QStringLiteral("未知状态"));
+	m_uavConDialog->setText(sta);
+
+
+	if (status == MyREALM::JonFmvTKNode::ConnectSuccess)
+	{
+		m_uavConDialog->hideAfter(4);
+
+		this->m_connStatusLabel->setPixmap(QPixmap(":/images/resource/images/signal_16px.png"));
+		this->m_connStatusLabel->setToolTip(QStringLiteral("已连接"));
+		this->m_nodeStatus->setText(QStringLiteral("正在处理..."));
+	}
+	else if (status == MyREALM::JonFmvTKNode::ConnectFailed)
+	{
+		this->m_connStatusLabel->setPixmap(QPixmap(":/images/resource/images/no_connection_16px.png"));
+		this->m_connStatusLabel->setToolTip(QStringLiteral("连接失败"));
+		this->m_nodeStatus->setText(QStringLiteral("无处理"));
+	}
+	else if (status == MyREALM::JonFmvTKNode::Disconnect)
+	{
+		this->m_connStatusLabel->setPixmap(QPixmap(":/images/resource/images/no_connection_16px.png"));
+		this->m_connStatusLabel->setToolTip(QStringLiteral("连接断开"));
+		this->m_nodeStatus->setText(QStringLiteral("未开始"));
+	}
+	else if (status == MyREALM::JonFmvTKNode::Connecting)
+	{
+		this->m_connStatusLabel->setPixmap(QPixmap(":/images/resource/images/signal_medium_16px.png"));
+		this->m_connStatusLabel->setToolTip(QStringLiteral("连接中"));
+		this->m_nodeStatus->setText(QStringLiteral("待处理..."));
+	}
+	
+
+
+
+
+}
+
+void MainWindow::on_connDialog_disconnect()
+{
+	this->on_action_stop_triggered();
+	m_uavConDialog->hide();
+}
+
+void MainWindow::on_connDialog_minimized()
+{
+	this->showMinimized();
+}
+
 void MainWindow::initOsg()
 {
 	osgViewer::Viewer* pViewer = m_osgWidget->getOsgViewer();
@@ -501,6 +641,7 @@ void MainWindow::initOsg()
 	m_sceneRoot->addChild(m_flightGnssLine);
 	m_sceneRoot->addChild(m_flightVisualLine);
 	m_sceneRoot->addChild(m_sparseCloud);
+	m_sceneRoot->addChild(m_denseCloud);
 	m_sceneRoot->addChild(m_faces);
 	pViewer->setSceneData(m_sceneRoot.get());
 	pViewer->addEventHandler(new osgViewer::StatsHandler());

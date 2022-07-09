@@ -6,8 +6,6 @@
 
 #include <opencv2/core/core.hpp>
 #include <boost/filesystem.hpp>
-
-//#include <realm_ros/conversions.h>
 #include <realm_io/realm_import.h>
 #include <realm_io/exif_import.h>
 #include <realm_io/utilities.h>
@@ -23,9 +21,19 @@
 namespace MyREALM
 {
 
+	using JoUAVConnectCLB = std::function<void(int status)>;
+
 	class MyREALM_Core_API JonFmvTKNode : public OpenThreads::Thread
 	{
 	public:
+		enum ConnectStatus
+		{
+			Disconnect = 0,
+			Connecting = 1,
+			ConnectSuccess = 2,
+			ConnectFailed = 3
+		};
+
 		JonFmvTKNode(const NodeParas& node_paras);
 		~JonFmvTKNode();
 
@@ -36,6 +44,9 @@ namespace MyREALM
 		void resume();
 
 		void receiveJoFmvTKFrame(JoFmvTKFrame* vtk_frame);
+
+
+		void bindJoUAVConnectCLB(JoUAVConnectCLB clb);
 
 	private:
 		OpenThreads::Mutex _mutex;
@@ -63,18 +74,25 @@ namespace MyREALM
 		uint64_t _next_frame_time;
 
 		jav_vtk* _vtk;
-		int _vtk_flag;  // 0: failed, 1:success
+		//int _vtk_flag;  // 0: failed, 1:success
+		ConnectStatus _connectStatus;
+		bool _requireDisconnect;
+
+		JoUAVConnectCLB _ConnectCLB;
 		
 		void readParams();
 		void setPaths();
 		void pubFrame(const realm::Frame::Ptr& frame);
+		void updateConnectStatus(ConnectStatus status);
+
+		friend class JavVtkOpenThread;
 	};
 
 	class JavVtkOpenThread :public  OpenThreads::Thread
 	{
 	public:
 		JavVtkOpenThread(jav_vtk* vtk, const std::string& url, 
-			int* flag, void* opaque);
+			JonFmvTKNode* opaque);
 
 		virtual int cancel();
 
@@ -84,8 +102,7 @@ namespace MyREALM
 		OpenThreads::Mutex _mutex;
 		jav_vtk* _vtk;
 		std::string _url;
-		void* _opaque;
-		int* _flag;
+		JonFmvTKNode* _opaque;
 	};
 
 } // namespace MyREALM

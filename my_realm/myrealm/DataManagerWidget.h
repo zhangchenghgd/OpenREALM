@@ -19,6 +19,8 @@ public:
 
     void setFlightGnssLine(osg::Node* node);
     void setFlightVisualLine(osg::Node* node);
+    void setSparse(osg::Node* node);
+    void setDense(osg::Node* node);
     void setFaces(osg::Node* node);
 
 public slots:
@@ -31,6 +33,8 @@ private:
     Ui::DataManagerWidget *ui;
     osg::Node* m_flightGnssLine;
     osg::Node* m_flightVisualLine;
+    osg::Node* m_sparse;
+    osg::Node* m_dense;
     osg::Node* m_faces;
 };
 

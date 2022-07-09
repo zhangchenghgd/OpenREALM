@@ -10,8 +10,10 @@ namespace MyREALM
 		m_SubTrajFun(NULL),
 		m_SubGnssBaseFun(NULL),
 		m_SubSparseFun(NULL),
-		m_SubFacesFunc(NULL),
-		m_SubImageFunc(NULL)
+		m_SubMeshFunc(NULL),
+		m_SubImageFunc(NULL), 
+		m_SubOrthoFunc(NULL), 
+		m_SubElevationFunc(NULL)
 	{
 
 	}
@@ -85,11 +87,27 @@ namespace MyREALM
 		}
 	}
 
-	void MySubscriber::subFaces(const std::vector<realm::Face>& faces)
+	void MySubscriber::subFaces(const realm::Mesh::Ptr& mesh)
 	{
-		if (m_SubFacesFunc)
+		if (m_SubMeshFunc)
 		{
-			m_SubFacesFunc(faces);
+			m_SubMeshFunc(mesh);
+		}
+	}
+
+	void MySubscriber::subOrtho(const realm::CvGridMap& ortho, uint8_t zone, char band)
+	{
+		if (m_SubOrthoFunc)
+		{
+			m_SubOrthoFunc(ortho, zone, band);
+		}
+	}
+
+	void MySubscriber::subElevation(const realm::CvGridMap& elevation, uint8_t zone, char band)
+	{
+		if (m_SubElevationFunc)
+		{
+			m_SubElevationFunc(elevation, zone, band);
 		}
 	}
 
@@ -122,9 +140,9 @@ namespace MyREALM
 		m_SubSparseFun = func;
 	}
 
-	void MySubscriber::bindSubFacesFunc(SubFacesFun func)
+	void MySubscriber::bindSubMeshFunc(SubMeshFun func)
 	{
-		m_SubFacesFunc = func;
+		m_SubMeshFunc = func;
 	}
 
 	void MySubscriber::bindSubImageFunc(SubImageFun func)
@@ -132,6 +150,15 @@ namespace MyREALM
 		m_SubImageFunc = func;
 	}
 
+	void MySubscriber::bindSubOrthoFunc(SubCvGridMapFun func)
+	{
+		m_SubOrthoFunc = func;
+	}
+
+	void MySubscriber::bindSubElevationFunc(SubCvGridMapFun func)
+	{
+		m_SubElevationFunc = func;
+	}
 
 	void MySubscriber::bindSubOutDirFunc(SubOutDirFun func)
 	{

@@ -30,9 +30,13 @@ namespace MyREALM
 
 		void pubPose(const cv::Mat& pose, uint8_t zone, char band);
 
-		void pubMesh(const std::vector<realm::Face>& faces);
+		void pubMesh(const realm::Mesh::Ptr& mesh);
 
-		void pubCvGridMap(const realm::CvGridMap& map);
+		//void pubCvGridMap(const realm::CvGridMap& map);
+
+		void pubOrtho(const realm::CvGridMap& map, uint8_t zone, char band);
+
+		void pubElevation(const realm::CvGridMap& map, uint8_t zone, char band);
 
 		void pubOutputDir(const std::string& dir);
 

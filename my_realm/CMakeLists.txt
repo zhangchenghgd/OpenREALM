@@ -6,3 +6,5 @@ add_subdirectory(myrealm_core)
 add_subdirectory(myrealm_viewer)
 
 add_subdirectory(myrealm)
+
+add_subdirectory(osgTerrainMesh)

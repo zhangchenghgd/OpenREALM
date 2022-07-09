@@ -246,9 +246,9 @@ namespace MyREALM
 		_publisher.insert({ "output/elevation",MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "elevation") });
 		_publisher.insert({ "output/pointcloud", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "pointcloud") });
 		_publisher.insert({ "output/mesh", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "mesh") });
-		_publisher.insert({ "output/update/ortho", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "update/ortho") });
 		_publisher.insert({ "output/full/ortho", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "full/ortho") });
-		// _publisher.insert({ "output/update/elevation", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "update/elevation", 5)});
+		_publisher.insert({ "output/update/ortho", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "update/ortho") });
+		_publisher.insert({ "output/update/elevation", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "update/elevation")});
 		linkStageTransport();
 	}
 
@@ -478,7 +478,7 @@ namespace MyREALM
 		publisher->pubImage(img);
 	}
 
-	void StageNode::pubMesh(const std::vector<Face>& faces, const std::string& topic)
+	void StageNode::pubMesh(const realm::Mesh::Ptr& mesh, const std::string& topic)
 	{
 		std::unique_lock<std::mutex> lock(_mutex_do_shutdown);
 
@@ -489,7 +489,7 @@ namespace MyREALM
 			return;
 
 
-		publisher->pubMesh(faces);
+		publisher->pubMesh(mesh);
 	}
 
 	void StageNode::pubTrajectory(const std::vector<cv::Vec3d>& traj, const std::string& topic)
@@ -509,7 +509,7 @@ namespace MyREALM
 			return;
 
 
-		publisher->pubCvGridMap(map);
+		//publisher->pubCvGridMap(map);
 	}
 
 	bool StageNode::srvFinish()
