@@ -64,6 +64,7 @@ namespace MyREALM
 
 		// ros communication handles
 		std::shared_ptr<MySubscriber> _sub_tracked;
+		std::shared_ptr<MySubscriber> _sub_frame;
 
 		// working paths
 		std::string _path_working_directory;
@@ -83,6 +84,7 @@ namespace MyREALM
 		// topics
 		std::string _topic_prefix;
 		std::string _topic_tracked;
+		std::string _topic_frame;
 
 
 		CameraSettings::Ptr _settings_camera;
@@ -97,7 +99,7 @@ namespace MyREALM
 
 		void subImage(const cv::Mat& image);
 
-
+		void subFrame(const realm::Frame::Ptr& frame);
 
 	};
 }

@@ -1,6 +1,9 @@
 ﻿#include <osg/Geometry>
 #include <osg/Geode>
 #include <osg/LineWidth>
+#include <osg/Texture2D>
+#include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 
 #include "FrustumSceneNode.h"
 
@@ -117,6 +120,12 @@ namespace MyREALM
 		vec_arr->push_back(osg::Vec3(plane_r.x(), plane_r.y(), plane_r.z()));
 		vec_arr->push_back(osg::Vec3(plane_cent.x(), plane_cent.y(), plane_cent.z()));
 
+		osg::ref_ptr<osg::Vec2Array> tex_arr = new osg::Vec2Array;
+		tex_arr->push_back(osg::Vec2(0, 0));
+		tex_arr->push_back(osg::Vec2(1, 0));
+		tex_arr->push_back(osg::Vec2(1, 1));
+		tex_arr->push_back(osg::Vec2(0, 1));
+
 		osg::ref_ptr<osg::Geometry> geom_outline = new osg::Geometry;
 		osg::ref_ptr<osg::Geometry> geom_faces = new osg::Geometry;
 		geom_outline->setVertexArray(vec_arr);
@@ -205,6 +214,138 @@ namespace MyREALM
 		//geod->addDrawable(geom_faces);
 		geod->addDrawable(geom_outline);
 
+
+		{
+			osg::ref_ptr<osg::Geometry> axis_geom = new osg::Geometry;
+			osg::ref_ptr<osg::Vec3Array> vec_arr2 = new osg::Vec3Array;
+			vec_arr2->push_back(osg::Vec3(0, 0, 0)* zFar * 0.5);
+			vec_arr2->push_back(osg::Vec3(1, 0, 0)* zFar * 0.5);
+			vec_arr2->push_back(osg::Vec3(0, 1, 0)* zFar * 0.5);
+			vec_arr2->push_back(osg::Vec3(0, 0, 1)* zFar * 0.5);
+			axis_geom->setVertexArray(vec_arr2);
+
+			osg::ref_ptr<osg::Vec4Array> line_clr_arr2 = new osg::Vec4Array;
+			line_clr_arr2->push_back(osg::Vec4(1., 0., 0., 1.));
+			line_clr_arr2->push_back(osg::Vec4(0., 1., 0., 1.));
+			line_clr_arr2->push_back(osg::Vec4(0., 0., 1., 1.));
+			axis_geom->setColorArray(line_clr_arr2);
+			axis_geom->setColorBinding(osg::Geometry::BIND_PER_PRIMITIVE_SET);
+
+			osg::ref_ptr<osg::DrawElementsUInt> axis_x = new osg::DrawElementsUInt(osg::PrimitiveSet::LINES, 2);
+			axis_x->at(0) = 0;
+			axis_x->at(1) = 1;
+
+			osg::ref_ptr<osg::DrawElementsUInt> axis_y = new osg::DrawElementsUInt(osg::PrimitiveSet::LINES, 2);
+			axis_y->at(0) = 0;
+			axis_y->at(1) = 2;
+
+			osg::ref_ptr<osg::DrawElementsUInt> axis_z = new osg::DrawElementsUInt(osg::PrimitiveSet::LINES, 2);
+			axis_z->at(0) = 0;
+			axis_z->at(1) = 3;
+			axis_geom->addPrimitiveSet(axis_x);
+			axis_geom->addPrimitiveSet(axis_y);
+			axis_geom->addPrimitiveSet(axis_z);
+
+			osg::ref_ptr<osg::LineWidth> line_w2 = new osg::LineWidth(2.0f);
+			axis_geom->getOrCreateStateSet()->setAttribute(line_w2, osg::StateAttribute::ON);
+			axis_geom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+
+			geod->addChild(axis_geom);
+		}
+
+
+
+
 		return geod;
 	}
+
+
+	osg::ref_ptr<osg::Geode> generateARImageNode(
+		const realm::camera::Pinhole::ConstPtr& cam, double zFar,
+		osg::Image* image)
+	{
+		int w = cam->width();
+		int h = cam->height();
+
+		Eigen::Matrix<double, 3, 3> K;
+		for (int r = 0; r < 3; r++)
+		{
+			for (int c = 0; c < 3; c++)
+			{
+				K(r, c) = cam->K().at<double>(r, c);
+			}
+		}
+
+		Eigen::Matrix<double, 3, 3> R = Eigen::Matrix<double, 3, 3>::Identity();
+		Eigen::Vector3d C(0, 0, 0);
+
+		const Frustum frustum(w, h, K,
+			R, C, zFar);
+
+		osg::ref_ptr<osg::Geode> geod = new osg::Geode;
+		osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
+
+		osg::ref_ptr<osg::Vec3Array> vec_arr = new osg::Vec3Array;
+		vec_arr->push_back(osg::Vec3(frustum.cones[4].x(), frustum.cones[4].y(), frustum.cones[4].z()));
+		vec_arr->push_back(osg::Vec3(frustum.cones[3].x(), frustum.cones[3].y(), frustum.cones[3].z()));
+		vec_arr->push_back(osg::Vec3(frustum.cones[2].x(), frustum.cones[2].y(), frustum.cones[2].z()));
+		vec_arr->push_back(osg::Vec3(frustum.cones[1].x(), frustum.cones[1].y(), frustum.cones[1].z()));
+		geom->setVertexArray(vec_arr.get());
+
+		osg::ref_ptr<osg::Vec4Array> clr_arr = new osg::Vec4Array;
+		clr_arr->push_back(osg::Vec4(1.0, 1.0, 1.0, 1.0));
+		geom->setColorArray(clr_arr);
+		geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+
+		osg::ref_ptr<osg::Vec2Array> tex_arr = new osg::Vec2Array;
+		tex_arr->push_back(osg::Vec2(0.0, 0.0));
+		tex_arr->push_back(osg::Vec2(1.0, 0.0));
+		tex_arr->push_back(osg::Vec2(1.0, 1.0));
+		tex_arr->push_back(osg::Vec2(0.0, 1.0));
+		geom->setTexCoordArray(0, tex_arr.get());
+
+		
+		osg::ref_ptr<osg::Vec3Array> norm_arr = new osg::Vec3Array;
+		norm_arr->push_back(osg::Vec3(0.0, 0.0, 1.0));
+		geom->setNormalArray(norm_arr);
+		geom->setNormalBinding(osg::Geometry::BIND_OVERALL);
+
+		geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS, 0, 4));
+		geod->addDrawable(geom.get());
+
+		osg::StateSet* state = geod->getOrCreateStateSet();
+
+		//osgDB::writeImageFile(*(image.get()), "D:/frame_pose2.png");
+		//osg::Image* image2 = osgDB::readImageFile("D:/frame_pose.png");
+
+
+		//将图像关联到Texture 2D对象
+		osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D;
+		tex->setDataVariance(osg::Object::DYNAMIC);
+		tex->setImage(image);
+
+		// 创建纹理对象后,释放内部的ref_ptr<Image>,删除Image图像。
+		tex->setUnRefImageDataAfterApply(false);
+		state->setTextureAttributeAndModes(0, tex.get(), osg::StateAttribute::ON);//关联材质属性与模式到材质单元0
+		state->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+
+		state->setMode(GL_BLEND, osg::StateAttribute::ON);
+		state->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+
+		////打开混合
+		//osg::BlendFunc* bf = new osg::BlendFunc(
+		//	osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA);
+		//state->setAttributeAndModes(bf);
+
+		//// 打开Alpha测试
+		//osg::AlphaFunc* af = new osg::AlphaFunc(
+		//	osg::AlphaFunc::GREATER, 0.05f);
+		//state->setAttributeAndModes(af);
+
+		geod->setStateSet(state);
+
+		return geod.get();
+	}
+
+
 }

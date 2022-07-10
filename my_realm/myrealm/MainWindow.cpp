@@ -31,7 +31,9 @@ using namespace std;
 
 MainWindow::MainWindow(QWidget* parent) :
 	QMainWindow(parent), ui(new Ui::MainWindow),
-	m_manipulator(nullptr), exivNode(nullptr), vtkNode(nullptr),
+	m_terrain_manipulator(nullptr), 
+	m_trackball_manipulator(nullptr),
+	exivNode(nullptr), vtkNode(nullptr),
 	pose_estimation_stageNode(nullptr),
 	densification_stageNode(nullptr),
 	surface_generation_stageNode(nullptr),
@@ -39,6 +41,7 @@ MainWindow::MainWindow(QWidget* parent) :
 	mosaicing_stageNode(nullptr),
 	scene3DNode(nullptr),
 	frameViewNode(nullptr),
+	m_followFrameView(false),
 	m_stageDirDateTime(QString())
 {
 	ui->setupUi(this);
@@ -72,6 +75,7 @@ MainWindow::MainWindow(QWidget* parent) :
 	m_sparseCloud = new osg::Group;
 	m_denseCloud = new osg::Group;
 	m_faces = new osg::Group;
+	m_arImageViewNode = new osg::Group;
 	m_dataMgrWidget->setFlightGnssLine(m_flightGnssLine);
 	m_dataMgrWidget->setFlightVisualLine(m_flightVisualLine);
 	m_dataMgrWidget->setSparse(m_sparseCloud);
@@ -181,23 +185,9 @@ void MainWindow::followFrameViewChanged(const osg::Matrix& view_mat)
 {
 	if (m_followFrameView)
 	{
-		osg::Vec3 eye, center, up;
-		m_osgWidget->getOsgViewer()->getCamera()->getViewMatrixAsLookAt(eye, center, up);
-		osg::Vec3 vec = center - eye; 
-		vec.normalize();
-
-		osg::Vec3 eye2, center2, up2;
-		//view_mat.getLookAt(eye2, center2, up2);
-		center = view_mat.getTrans();
-
-		float dist = (center - eye).length();
-
-		eye = center - (vec * dist);
-
-		m_osgWidget->getOsgViewer()->getCamera()->setViewMatrixAsLookAt(eye, center, up);
-
-		//m_manipulator->setByMatrix(view_mat);
-
+		osg::Vec3d eye, center, up;
+		view_mat.getLookAt(eye, center, up);
+		m_trackball_manipulator->setTransformation(eye, center, up);
 	}
 }
 
@@ -407,7 +397,10 @@ void MainWindow::create_scene3DNode()
 	osg::Node* mesh = scene3DNode->meshNode();
 	osg::Node* visualPoseFrustum= scene3DNode->visualPoseFrustumNode();
 	osg::Node* gnssPoseFrustum = scene3DNode->gnssPoseFrustumNode();
+	osg::Node* arNode = scene3DNode->arNode();
 
+
+	this->m_arImageViewNode->addChild(arNode);
 	this->m_flightVisualLine->addChild(visualTraj);
 	this->m_flightGnssLine->addChild(gnssTraj);
 	this->m_flightVisualLine->addChild(visualPoseFrustum);
@@ -416,9 +409,9 @@ void MainWindow::create_scene3DNode()
 	this->m_denseCloud->addChild(dense);
 	this->m_faces->addChild(mesh);
 
-	MyREALM::FollowFrameViewCLB followCLB = std::bind(&MainWindow::followFrameViewChanged,
-		this, std::placeholders::_1);
-	scene3DNode->bindFollowFrameViewCLB(followCLB);
+	//MyREALM::FollowFrameViewCLB followCLB = std::bind(&MainWindow::followFrameViewChanged,
+	//	this, std::placeholders::_1);
+	//scene3DNode->bindFollowFrameViewCLB(followCLB);
 }
 
 void MainWindow::create_frameViewNode()
@@ -526,17 +519,26 @@ void MainWindow::on_action_flowFrameView_triggered(bool check)
 	m_followFrameView = check;
 	if (m_followFrameView)
 	{
-		m_osgWidget->getOsgViewer()->setCameraManipulator(nullptr);
+		MyREALM::FollowFrameViewCLB followCLB = std::bind(&MainWindow::followFrameViewChanged,
+			this, std::placeholders::_1);
+		scene3DNode->bindFollowFrameViewCLB(followCLB);
+		m_osgWidget->getOsgViewer()->setCameraManipulator(m_trackball_manipulator.get(), false);
 	}
 	else
 	{
-		m_osgWidget->getOsgViewer()->setCameraManipulator(m_manipulator.get(), false);
+		scene3DNode->bindFollowFrameViewCLB(NULL);
+		m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get(), false);
 	}
+
+	
 }
 
 
 void MainWindow::on_action_homeView_triggered()
 {
+	ui->action_flowFrameView->setChecked(false);
+	m_followFrameView = false;
+	m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get(), false);
 	osg::BoundingSphere bs = m_sceneRoot->computeBound();
 	osg::Vec3 center = bs.center();
 	float r =  bs.radius();
@@ -547,10 +549,10 @@ void MainWindow::on_action_homeView_triggered()
 	osg::Vec3 up = right ^ vec;
 
 
-	m_manipulator->setHomePosition(eye, center, up);
+	m_terrain_manipulator->setHomePosition(eye, center, up);
 
 
-	m_manipulator->home(0);
+	m_terrain_manipulator->home(0);
 }
 
 
@@ -643,6 +645,7 @@ void MainWindow::initOsg()
 	m_sceneRoot->addChild(m_sparseCloud);
 	m_sceneRoot->addChild(m_denseCloud);
 	m_sceneRoot->addChild(m_faces);
+	m_sceneRoot->addChild(m_arImageViewNode);
 	pViewer->setSceneData(m_sceneRoot.get());
 	pViewer->addEventHandler(new osgViewer::StatsHandler());
 	pViewer->addEventHandler(new osgViewer::WindowSizeHandler());
@@ -652,15 +655,16 @@ void MainWindow::initOsg()
 
 	m_osgWidget->getOsgViewer()->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-	m_manipulator = new osgGA::TerrainManipulator;
+	m_trackball_manipulator = new osgGA::TrackballManipulator;
+	m_terrain_manipulator = new osgGA::TerrainManipulator;
 
-	m_osgWidget->getOsgViewer()->setCameraManipulator(m_manipulator.get(), true);
+	m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get(), true);
 
 	osg::Vec3 eye(50, -50, 150);
 	osg::Vec3 center(0, 0, 90);
 	osg::Vec3 up(0, 0, 1);
 
-	m_manipulator->setHomePosition(eye, center, up);
+	m_terrain_manipulator->setHomePosition(eye, center, up);
 
-	m_manipulator->home(0);
+	m_terrain_manipulator->home(0);
 }

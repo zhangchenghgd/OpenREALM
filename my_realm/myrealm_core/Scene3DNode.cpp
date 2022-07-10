@@ -8,6 +8,7 @@
 #include <osg/LineWidth>
 #include <osg/Texture2D>
 #include <osgDB/WriteFile>
+#include <osgDB/ReadFile>
 #include <TJH_SRS/UTM.h>
 
 
@@ -51,6 +52,8 @@ namespace MyREALM
 		//m_mesh = createFacesGeode(m_meshCLB);
 		m_gnssPoseFrustum = new osg::MatrixTransform;
 		m_visualPoseFrustum = new osg::MatrixTransform;
+		m_arNode = new osg::MatrixTransform;
+		m_arImg = nullptr;
 
 		osg::ref_ptr<osg::Vec3Array> mesh_vec_arr = new osg::Vec3Array;
 		osg::ref_ptr<osg::Vec4Array> mesh_clr_arr = new osg::Vec4Array;
@@ -105,7 +108,6 @@ namespace MyREALM
 		_sub_output_dir = MyRealmSys::get_instance()
 			.getOrCreatePublisher(_sub_output_dir_in)
 			->registSubscriber(_sub_output_dir_in + "/sub/output_dir");
-
 		SubOutDirFun subOutDirFunc = std::bind(&Scene3DNode::subOutputPath, this, std::placeholders::_1);
 		_sub_output_dir->bindSubOutDirFunc(subOutDirFunc);
 
@@ -267,6 +269,8 @@ namespace MyREALM
 
 	void Scene3DNode::bindFollowFrameViewCLB(FollowFrameViewCLB clb)
 	{
+		m_arNode->removeChildren(0, m_arNode->getNumChildren());
+		m_arImg = nullptr;
 		m_followFrameViewCLB = clb;
 	}
 
@@ -309,6 +313,11 @@ namespace MyREALM
 	osg::Node* Scene3DNode::gnssPoseFrustumNode()
 	{
 		return m_gnssPoseFrustum->asNode();
+	}
+
+	osg::Node* Scene3DNode::arNode()
+	{
+		return m_arNode->asNode();
 	}
 
 
@@ -371,6 +380,63 @@ namespace MyREALM
 			m_visualPoseFrustum->addChild(visual_frustum_geod);
 		}
 
+		if (m_followFrameViewCLB)
+		{
+			cv::Mat img_init = frame->getImageRaw();
+			cv::Mat img0, img;
+			cv::cvtColor(img_init, img0, cv::COLOR_BGR2RGB);
+			int s_w = img0.cols * 0.1;
+			int s_h = img0.rows * 0.1;
+			cv::resize(img0, img, cv::Size(s_w, s_h));
+			
+			if (m_arNode->getNumChildren() == 0)
+			{
+				m_arImg = new osg::Image;
+				m_arImg->allocateImage(img.cols, img.rows, 1, GL_RGB, GL_UNSIGNED_BYTE);
+				m_arImg->setAllocationMode(osg::Image::NO_DELETE);
+				osg::ref_ptr<osg::Geode> ar_geod = generateARImageNode(frame->getCamera(), 
+					60, m_arImg.get());
+				m_arNode->addChild(ar_geod);
+			}
+
+			unsigned int newTotalSize = m_arImg->computeRowWidthInBytes(img.cols, 
+				GL_BGR, GL_UNSIGNED_BYTE, 1) * img.rows * 1;
+			unsigned char* im_data = m_arImg->data();
+			memcpy(im_data, img.data, newTotalSize * sizeof(unsigned char));
+
+			/*m_arImg->setImage(img.cols, img.rows, 1, GL_RGB, GL_RGB,
+				GL_UNSIGNED_BYTE, img.data, osg::Image::NO_DELETE);*/
+
+			m_arImg->flipVertical();
+			m_arImg->dirty();
+
+			cv::Mat pose = frame->getDefaultPose();
+
+			osg::Matrix T = osg::Matrix::translate(
+				pose.at<double>(0, 3) - _gnss_base_utm[0],
+				pose.at<double>(1, 3) - _gnss_base_utm[1],
+				pose.at<double>(2, 3) - _gnss_base_utm[2]);
+			osg::Matrix R(
+				pose.at<double>(0, 0), pose.at<double>(0, 1), pose.at<double>(0, 2), 0.0,
+				pose.at<double>(1, 0), pose.at<double>(1, 1), pose.at<double>(1, 2), 0.0,
+				pose.at<double>(2, 0), pose.at<double>(2, 1), pose.at<double>(2, 2), 0.0,
+				0.0, 0.0, 0.0, 1.0);
+
+			osg::Matrix mat = R * T;
+
+			m_arNode->setMatrix(mat);
+
+			osg::Vec3 eye = osg::Vec3(0.0, 0.0, 0.0) * mat;
+			osg::Vec3 center = osg::Vec3(0.0, 0.0, 1.0) * mat;
+			osg::Vec3 vect = center - eye;
+			osg::Vec3 up = osg::Vec3(0.0, -1.0, 0.0) * R;
+			up.normalize();
+
+			osg::Matrix mat2;
+			mat2.makeLookAt(eye, center, up);
+
+			m_followFrameViewCLB(mat2);
+		}
 	}
 
 	void Scene3DNode::subGnssPose(const cv::Mat& pose, uint8_t zone, char band)
@@ -407,11 +473,6 @@ namespace MyREALM
 		osg::Matrix mat = R * T;
 
 		m_visualPoseFrustum->setMatrix(mat);
-
-		if (m_followFrameViewCLB)
-		{
-			m_followFrameViewCLB(mat);
-		}
 
 	}
 

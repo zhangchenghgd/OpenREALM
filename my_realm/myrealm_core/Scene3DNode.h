@@ -26,6 +26,7 @@
 #include <osg/Group>
 #include <osg/MatrixTransform>
 #include <osg/Callback>
+#include <osg/Image>
 #include <OpenThreads/Thread>
 #include <OpenThreads/Mutex>
 
@@ -66,6 +67,8 @@ namespace MyREALM
 		osg::Node* visualPoseFrustumNode();
 
 		osg::Node* gnssPoseFrustumNode();
+
+		osg::Node* arNode();
 
 		virtual int cancel();
 
@@ -146,6 +149,8 @@ namespace MyREALM
 		//osg::ref_ptr<osg::Group> m_faces;
 		osg::ref_ptr<osg::MatrixTransform> m_gnssPoseFrustum;
 		osg::ref_ptr<osg::MatrixTransform> m_visualPoseFrustum;
+		osg::ref_ptr<osg::MatrixTransform> m_arNode;
+		osg::ref_ptr<osg::Image> m_arImg;
 
 		osg::ref_ptr<TrajDrawCallback> m_visualTrajCLB;
 		osg::ref_ptr<TrajDrawCallback> m_gnssTrajCLB;

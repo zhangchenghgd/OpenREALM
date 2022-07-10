@@ -3,6 +3,7 @@
 
 #include "MyREALM_Core_Exports.h"
 #include <osg/Geode>
+#include <osg/Image>
 #include <realm_core/camera.h>
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -82,6 +83,9 @@ namespace MyREALM
 		const realm::camera::Pinhole::ConstPtr& cam, double zFar, 
 		const osg::Vec4& color = osg::Vec4(1., 1., 1., 1.));
 
+	osg::ref_ptr<osg::Geode> generateARImageNode(
+		const realm::camera::Pinhole::ConstPtr& cam, double zFar,
+		osg::Image* image);
 }
 
 

@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <osg/Group>
 #include <osgGA/TerrainManipulator>
+#include <osgGA/TrackballManipulator>
 #include <functional>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -92,10 +93,12 @@ private:
     QLabel* m_connAddrLabel;
     bool m_followFrameView;
     
-    osg::ref_ptr<osgGA::TerrainManipulator> m_manipulator;
+    osg::ref_ptr<osgGA::TerrainManipulator> m_terrain_manipulator;
+    osg::ref_ptr<osgGA::TrackballManipulator> m_trackball_manipulator;
     osg::ref_ptr<osg::Group> m_sceneRoot;
     osg::ref_ptr<osg::Group> m_flightGnssLine;
     osg::ref_ptr<osg::Group> m_flightVisualLine;
+    osg::ref_ptr<osg::Group> m_arImageViewNode;
     osg::ref_ptr<osg::Group> m_sparseCloud;
     osg::ref_ptr<osg::Group> m_denseCloud;
     osg::ref_ptr<osg::Group> m_faces;

@@ -19,12 +19,20 @@ namespace MyREALM
 
 		_topic_tracked = "/realm/" + _id_camera + "/pose_estimation/tracked";
 
+		_topic_frame = "/realm/" + _id_camera + "/pose_estimation/frame";
+
+		//_topic_frame = "/realm/" + _id_camera + "/input";
+
 		_sub_tracked = MyRealmSys::get_instance().getOrCreatePublisher(_topic_tracked)
-			->registSubscriber(_topic_tracked + "/sub");
+			->registSubscriber(_topic_tracked + "/FrameViewNode/sub");
 
 		SubImageFun subImageFunc = std::bind(&FrameViewNode::subImage, this, std::placeholders::_1);
 		_sub_tracked->bindSubImageFunc(subImageFunc);
 
+		/*_sub_frame = MyRealmSys::get_instance().getOrCreatePublisher(_topic_frame)
+			->registSubscriber(_topic_frame + "/FrameViewNode/sub");
+		SubFrameFun subFrameFunc = std::bind(&FrameViewNode::subFrame, this, std::placeholders::_1);
+		_sub_frame->bindSubFrameFunc(subFrameFunc);*/
 	}
 
 	FrameViewNode::~FrameViewNode()
@@ -82,6 +90,14 @@ namespace MyREALM
 		if (m_displayTrackedImageFunc)
 		{
 			m_displayTrackedImageFunc(image);
+		}
+	}
+
+	void FrameViewNode::subFrame(const realm::Frame::Ptr& frame)
+	{
+		if (m_displayTrackedImageFunc)
+		{
+			m_displayTrackedImageFunc(frame->getImageRaw());
 		}
 	}
 
