@@ -32,11 +32,7 @@ namespace MyREALM
 
 		void pubMesh(const realm::Mesh::Ptr& mesh);
 
-		//void pubCvGridMap(const realm::CvGridMap& map);
-
-		void pubOrtho(const realm::CvGridMap& map, uint8_t zone, char band);
-
-		void pubElevation(const realm::CvGridMap& map, uint8_t zone, char band);
+		void pubCvGridMap(const realm::CvGridMap& map, uint8_t zone, char band);
 
 		void pubOutputDir(const std::string& dir);
 

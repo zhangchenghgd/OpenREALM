@@ -130,10 +130,13 @@ namespace MyREALM
 
 	void JonFmvTKNode::updateConnectStatus(ConnectStatus status)
 	{
-		_connectStatus = status;
-		if (_ConnectCLB)
+		if (_connectStatus != status)
 		{
-			_ConnectCLB((int)status);
+			_connectStatus = status;
+			if (_ConnectCLB)
+			{
+				_ConnectCLB((int)status);
+			}
 		}
 	}
 
@@ -172,7 +175,9 @@ namespace MyREALM
 			{
 				OpenThreads::Thread::microSleep(10000);
 			}
-		} while (_connectStatus == Connecting || _connectStatus == ConnectSuccess);
+		} while (_connectStatus == Connecting 
+			|| _connectStatus == ConnectSuccess
+			|| _connectStatus == FrameRecieved);
 
 		// 结束处理流程，如果open还未返回，此时会返回
 		jav_vtk_close(_vtk);
@@ -275,6 +280,8 @@ namespace MyREALM
 
 
 		pubFrame(frame);
+
+		updateConnectStatus(FrameRecieved);
 
 		_next_frame_time = cur_time + (int)(1000 / _fps);
 	

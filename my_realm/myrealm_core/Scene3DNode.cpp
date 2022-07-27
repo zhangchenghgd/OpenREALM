@@ -1,6 +1,8 @@
 ﻿#include "Scene3DNode.h"
 #include "MyREALM.h"
 #include <sstream>
+#include <fstream>
+#include <iomanip>
 #include <glog/logging.h>
 #include <osg/Node>
 #include <osg/Geode>
@@ -23,22 +25,25 @@ namespace MyREALM
 
 		// Specify stage
 		setPaths();
-
+		m_update_mesh_count = 0;
 		m_followFrameViewCLB = NULL;
 
+		_gnss_base_inited = false;
 		_gnss_base_wgs84 = cv::Vec3d(0, 0, 0);
 		_gnss_base_utm = cv::Vec3d(0, 0, 0);
 		m_visualTrajThread = new TrajReceiverThread;
 		m_gnssTrajThread = new TrajReceiverThread;
 		m_sparseThread = new SparseReceiverThread;
 		m_denseThread = new SparseReceiverThread;
-		m_meshThread = new FacesReceiverThread;
+		m_meshThread = new MeshReceiverThread;
+		m_arThread = new ArImageReceiverThread;
 
 		m_visualTrajCLB = new TrajDrawCallback(m_visualTrajThread);
 		m_gnssTrajCLB = new TrajDrawCallback(m_gnssTrajThread);
 		m_sparseCLB = new SparseDrawCallback(m_sparseThread);
 		m_denseCLB = new SparseDrawCallback(m_denseThread);
-		m_meshCLB = new  FacesDrawCallback(m_meshThread);
+		m_meshCLB = new  MeshNodeCallback(m_meshThread);
+		m_arCLB = new ArImageUpdateCallback(m_arThread);
 
 		m_visualTraj = createTrajGeode(osg::Vec4(1, 0, 0, 1), 2,
 			m_visualTrajCLB);
@@ -48,8 +53,9 @@ namespace MyREALM
 			m_sparseCLB);
 		m_dense = createSparseGeode(osg::Vec4(1, 0, 0, 1), 4,
 			m_denseCLB);
+		m_mesh = new osg::Group;
+		//m_mesh->setUpdateCallback(m_meshCLB);
 
-		//m_mesh = createFacesGeode(m_meshCLB);
 		m_gnssPoseFrustum = new osg::MatrixTransform;
 		m_visualPoseFrustum = new osg::MatrixTransform;
 		m_arNode = new osg::MatrixTransform;
@@ -60,16 +66,12 @@ namespace MyREALM
 		osg::ref_ptr<osg::Vec2Array> mesh_texture_arr = new osg::Vec2Array;
 		osg::ref_ptr<osg::UIntArray> mesh_face_ary = new osg::UIntArray;
 
-		osg::ref_ptr<osg::Geode> mesh_geode = createMeshGeode(mesh_vec_arr,
-			mesh_clr_arr, mesh_texture_arr, mesh_face_ary, nullptr);
-		m_mesh = new osg::Group;
-		m_mesh->addChild(mesh_geode);
-
 		m_visualTrajThread->startThread();
 		m_gnssTrajThread->startThread();
 		m_sparseThread->startThread();
 		m_denseThread->startThread();
-		//m_meshThread->startThread();
+		m_meshThread->startThread();
+		//m_arThread->startThread();
 
 		//createFacesNode();
 
@@ -96,8 +98,7 @@ namespace MyREALM
 		_topic_dense_in = "/realm/" + _id_camera + "/densification/pointcloud";
 
 		_topic_faces_in = "/realm/" + _id_camera + "/mosaicing/mesh";
-		_topic_update_ortho_in = "/realm/" + _id_camera + "/mosaicing/update/ortho";
-		_topic_update_elevation_in = "/realm/" + _id_camera + "/mosaicing/update/elevation";
+		_topic_update_elevation_ortho_in = "/realm/" + _id_camera + "/mosaicing/update/elevation_ortho";
 
 		_sub_input_frame = MyRealmSys::get_instance().getOrCreatePublisher(_topic_frame_in)
 			->registSubscriber("/realm/" + _id_camera + + "/scene3d/sub/frame");
@@ -161,19 +162,14 @@ namespace MyREALM
 		
 
 
-		_sub_ortho = MyRealmSys::get_instance().getOrCreatePublisher(_topic_update_ortho_in)
-			->registSubscriber(_topic_update_ortho_in + "/sub");
+		_sub_elevation_ortho = MyRealmSys::get_instance().getOrCreatePublisher(_topic_update_elevation_ortho_in)
+			->registSubscriber(_topic_update_elevation_ortho_in + "/sub");
 
-		SubCvGridMapFun subOrthoFunc = std::bind(&Scene3DNode::subOrtho, this, 
+		SubCvGridMapFun subElevOrthoFunc = std::bind(&Scene3DNode::subUpdateElevationOrtho, this, 
 			std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-		_sub_ortho->bindSubOrthoFunc(subOrthoFunc);
+		_sub_elevation_ortho->bindCvGridMapFunc(subElevOrthoFunc);
 
-		_sub_elevation = MyRealmSys::get_instance().getOrCreatePublisher(_topic_update_elevation_in)
-			->registSubscriber(_topic_update_elevation_in + "/sub");
-
-		SubCvGridMapFun subElevationFunc = std::bind(&Scene3DNode::subElevation, this,
-			std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-		_sub_elevation->bindSubElevationFunc(subElevationFunc);
+		
 
 	}
 
@@ -187,18 +183,30 @@ namespace MyREALM
 			m_sparse->getChild(0)->removeUpdateCallback(m_sparseCLB);
 		if (m_dense->getNumChildren() == 1)
 			m_dense->getChild(0)->removeUpdateCallback(m_denseCLB);
+
+		if (m_arNode->getNumChildren() == 1)
+		{
+			osg::Geode* arGeode = m_arNode->getChild(0)->asGeode();
+			removeArImageUpdateCallback(arGeode, m_arCLB);
+		}
+
+		//m_mesh->removeUpdateCallback(m_meshCLB);
+		
 		/*if (m_faces->getNumChildren() == 1)
 			m_faces->getChild(0)->removeUpdateCallback(m_facesCLB);*/
-
+		
 		/*m_visualTraj->removeChildren(0, m_visualTraj->getNumChildren());
 		m_gnssTraj->removeChildren(0, m_gnssTraj->getNumChildren());
 		m_sparse->removeChildren(0, m_sparse->getNumChildren());
 		m_mesh->removeChildren(0, m_mesh->getNumChildren());*/
 		//m_faces->removeChildren(0, m_faces->getNumChildren());
 
+		m_arNode->removeChildren(0, m_mesh->getNumChildren());
+		m_arNode = nullptr;
+
 		if (isRunning())
 		{
-			this->cancel();
+			this->cancel(); 
 		}
 
 		
@@ -206,19 +214,22 @@ namespace MyREALM
 		m_gnssTrajThread->cancel();
 		m_sparseThread->cancel();
 		m_denseThread->cancel();
-		//m_meshThread->cancel();
+		m_meshThread->cancel();
+		m_arThread->cancel();
 
 		delete m_visualTrajThread;
 		delete m_gnssTrajThread;
 		delete m_sparseThread;
 		delete m_denseThread;
-		//delete m_meshThread;
+		delete m_meshThread;
+		delete m_arThread;
 
 		m_visualTrajThread = nullptr;
 		m_gnssTrajThread = nullptr;
 		m_sparseThread = nullptr;
 		m_denseThread = nullptr;
-		//m_meshThread = nullptr;
+		m_meshThread = nullptr;
+		m_arThread = nullptr;
 
 	}
 
@@ -226,6 +237,13 @@ namespace MyREALM
 	int Scene3DNode::cancel()
 	{
 		_done = true;
+
+		//if (m_mesh->getNumChildren() > 0)
+		//{
+		//	// 保存mesh
+		//	std::string save_osgb_filepath = _mesh_output_directory + "/mesh.osgb";
+		//	osgDB::writeNodeFile(*(m_mesh.get()), save_osgb_filepath);
+		//}
 
 		if (m_visualTrajThread->isRunning())
 		{
@@ -243,10 +261,15 @@ namespace MyREALM
 		{
 			m_denseThread->cancel();
 		}
+		if (m_arThread->isRunning())
+		{
+			m_arThread->cancel();
+		}
 		/*if (m_meshThread->isRunning())
 		{
 			m_meshThread->cancel();
 		}*/
+
 		/*for (TileFacesNodeMap::iterator tile_it = m_tileFacesNodes.begin();
 			tile_it != m_tileFacesNodes.end(); ++tile_it)
 		{
@@ -272,6 +295,20 @@ namespace MyREALM
 		m_arNode->removeChildren(0, m_arNode->getNumChildren());
 		m_arImg = nullptr;
 		m_followFrameViewCLB = clb;
+	}
+
+	void Scene3DNode::writeMeshSrs(const std::string& filename)
+	{
+		std::ofstream fs(filename.c_str());
+		if (fs.fail())
+		{
+			return;
+		}
+
+		fs << "SRS:        " << _gnss_base_utm_name << " (EPSG:" << _gnss_base_utm_epsg << ")\n";
+		fs << "SRS_Origin: " << std::fixed << std::setprecision(6) << _gnss_base_utm[0] << ",  " << _gnss_base_utm[1] << ",  " << _gnss_base_utm[2] << "\n";
+		fs.flush();
+		fs.close();
 	}
 
 	osg::Node* Scene3DNode::visualTrajNode()
@@ -385,32 +422,22 @@ namespace MyREALM
 			cv::Mat img_init = frame->getImageRaw();
 			cv::Mat img0, img;
 			cv::cvtColor(img_init, img0, cv::COLOR_BGR2RGB);
-			int s_w = img0.cols * 0.1;
-			int s_h = img0.rows * 0.1;
-			cv::resize(img0, img, cv::Size(s_w, s_h));
+
+			cv::resize(img0, img0, cv::Size(img0.cols * 0.4, img0.rows * 0.4));
 			
 			if (m_arNode->getNumChildren() == 0)
 			{
-				m_arImg = new osg::Image;
-				m_arImg->allocateImage(img.cols, img.rows, 1, GL_RGB, GL_UNSIGNED_BYTE);
-				m_arImg->setAllocationMode(osg::Image::NO_DELETE);
 				osg::ref_ptr<osg::Geode> ar_geod = generateARImageNode(frame->getCamera(), 
-					60, m_arImg.get());
+					60, m_arCLB);
 				m_arNode->addChild(ar_geod);
+
+				m_arThread->startThread();
 			}
 
-			unsigned int newTotalSize = m_arImg->computeRowWidthInBytes(img.cols, 
-				GL_BGR, GL_UNSIGNED_BYTE, 1) * img.rows * 1;
-			unsigned char* im_data = m_arImg->data();
-			memcpy(im_data, img.data, newTotalSize * sizeof(unsigned char));
-
-			/*m_arImg->setImage(img.cols, img.rows, 1, GL_RGB, GL_RGB,
-				GL_UNSIGNED_BYTE, img.data, osg::Image::NO_DELETE);*/
-
-			m_arImg->flipVertical();
-			m_arImg->dirty();
+			m_arThread->setImage(img0.cols, img0.rows, GL_RGB, GL_UNSIGNED_BYTE, img0.data);
 
 			cv::Mat pose = frame->getDefaultPose();
+			
 
 			osg::Matrix T = osg::Matrix::translate(
 				pose.at<double>(0, 3) - _gnss_base_utm[0],
@@ -435,7 +462,13 @@ namespace MyREALM
 			osg::Matrix mat2;
 			mat2.makeLookAt(eye, center, up);
 
-			m_followFrameViewCLB(mat2);
+			double cam_f = frame->getCamera()->fx();
+			double cam_w = frame->getCamera()->width();
+			double cam_h = frame->getCamera()->height();
+			double cam_cx = frame->getCamera()->cx();
+			double cam_cy = frame->getCamera()->cy();
+
+			m_followFrameViewCLB(mat2, cam_w, cam_h, cam_f, cam_cx, cam_cy);
 		}
 	}
 
@@ -525,6 +558,15 @@ namespace MyREALM
 		_gnss_base_utm = cv::Vec3d(utm_xyz.x(),
 			utm_xyz.y(), utm_xyz.z());
 
+		_gnss_base_utm_name = utm.name();
+		_gnss_base_utm_epsg = utm.epsg();
+		_gnss_base_inited = true;
+
+		if (_gnss_base_inited)
+		{
+			std::string save_srs_filepath = _mesh_output_directory + "/SRS.txt";
+			writeMeshSrs(save_srs_filepath);
+		}
 	}
 
 	void Scene3DNode::subSparse(const realm::PointCloud::Ptr& sparse_cloud)
@@ -577,197 +619,6 @@ namespace MyREALM
 		m_denseThread->setVerticsAndColors(*vec_arr.get(), *clr_arr.get());
 	}
 
-	//void Scene3DNode::subFaces(const realm::Mesh::Ptr& mesh)
-	//{
-	//	//osg::ref_ptr<osg::Vec3Array> vec_arr = new osg::Vec3Array;
-	//	//osg::ref_ptr<osg::Vec4Array> clr_arr = new osg::Vec4Array;
-
-	//	std::map<std::string, osg::ref_ptr<osg::Vec3Array>> vec_arr_map;
-	//	std::map<std::string, osg::ref_ptr<osg::Vec4Array>> clr_arr_map;
-	//	std::map<std::string, std::pair<int,int>> tile_row_col_map;
-
-	//	for (int r = -10; r < 10; ++r)
-	//	{
-	//		for (int c = -10; c < 10; ++c)
-	//		{
-	//			std::stringstream ss;
-
-	//			ss << "Tile_";
-	//			if (c >= 0)
-	//			{
-	//				ss << "+";
-	//			}
-	//			else
-	//			{
-	//				ss << "-";
-	//			}
-	//			ss << abs(c) << "_";
-	//			if (r >= 0)
-	//			{
-	//				ss << "+";
-	//			}
-	//			else
-	//			{
-	//				ss << "-";
-	//			}
-	//			ss << abs(r);
-	//			std::string tile_name = ss.str();
-	//			osg::ref_ptr<osg::Vec3Array> vec_arr = new osg::Vec3Array;
-	//			osg::ref_ptr<osg::Vec4Array> clr_arr = new osg::Vec4Array;
-	//			vec_arr_map[tile_name] = vec_arr;
-	//			clr_arr_map[tile_name] = clr_arr;
-	//			tile_row_col_map[tile_name] = std::pair<int, int>(r, c);
-	//		}
-	//	}
-
-	//	size_t face_num = mesh->face_size();
-	//	size_t vert_num = mesh->vert_size();
-
-	//	for (const auto& face : faces)
-	//	{
-	//		if (cv::norm(face.vertices[0] - face.vertices[1]) > 5.0)
-	//			continue;
-	//		if (cv::norm(face.vertices[1] - face.vertices[2]) > 5.0)
-	//			continue;
-
-	//		osg::Vec3 pt1;
-	//		pt1.x() = face.vertices[0].x - _gnss_base_utm[0];
-	//		pt1.y() = face.vertices[0].y - _gnss_base_utm[1];
-	//		pt1.z() = face.vertices[0].z - _gnss_base_utm[2];
-
-	//		osg::Vec4 rgba1;
-	//		rgba1.b() = static_cast<float>(face.color[0][0]) / 255.0f;
-	//		rgba1.g() = static_cast<float>(face.color[0][1]) / 255.0f;
-	//		rgba1.r() = static_cast<float>(face.color[0][2]) / 255.0f;
-	//		rgba1.a() = 1.0;
-
-	//		osg::Vec3  pt2;
-	//		pt2.x() = face.vertices[1].x - _gnss_base_utm[0];
-	//		pt2.y() = face.vertices[1].y - _gnss_base_utm[1];
-	//		pt2.z() = face.vertices[1].z - _gnss_base_utm[2];
-
-	//		osg::Vec4 rgba2;
-	//		rgba2.b() = static_cast<float>(face.color[1][0]) / 255.0f;
-	//		rgba2.g() = static_cast<float>(face.color[1][1]) / 255.0f;
-	//		rgba2.r() = static_cast<float>(face.color[1][2]) / 255.0f;
-	//		rgba2.a() = 1.0;
-
-	//		osg::Vec3 pt3;
-	//		pt3.x() = face.vertices[2].x - _gnss_base_utm[0];
-	//		pt3.y() = face.vertices[2].y - _gnss_base_utm[1];
-	//		pt3.z() = face.vertices[2].z - _gnss_base_utm[2];
-
-	//		osg::Vec4 rgba3;
-	//		rgba3.b() = static_cast<float>(face.color[2][0]) / 255.0f;
-	//		rgba3.g() = static_cast<float>(face.color[2][1]) / 255.0f;
-	//		rgba3.r() = static_cast<float>(face.color[2][2]) / 255.0f;
-	//		rgba3.a() = 1.0;
-
-	//		/*vec_arr->push_back(pt1);
-	//		vec_arr->push_back(pt2);
-	//		vec_arr->push_back(pt3);
-	//		clr_arr->push_back(rgba1);
-	//		clr_arr->push_back(rgba2);
-	//		clr_arr->push_back(rgba3);*/
-
-	//		osg::Vec3 face_center = (pt1 + pt2 + pt3) / 3;
-
-	//		int col = static_cast<int>(face_center.x() / m_tile_size);
-	//		int row = static_cast<int>(face_center.y() / m_tile_size);
-
-	//		std::stringstream ss;
-
-	//		ss << "Tile_";
-	//		if (col >= 0)
-	//		{
-	//			ss << "+";
-	//		}
-	//		else 
-	//		{
-	//			ss << "-";
-	//		}
-	//		ss << abs(col) << "_";
-	//		if (row >= 0)
-	//		{
-	//			ss << "+";
-	//		}
-	//		else
-	//		{
-	//			ss << "-";
-	//		}
-	//		ss << abs(row);
-	//		std::string tile_name = ss.str();
-
-	//		osg::ref_ptr<osg::Vec3Array> vec_arr = nullptr;
-	//		osg::ref_ptr<osg::Vec4Array> clr_arr = nullptr;
-
-	//		std::map<std::string, osg::ref_ptr<osg::Vec3Array>>::iterator vec_arr_it 
-	//			= vec_arr_map.find(tile_name);
-	//		std::map<std::string, osg::ref_ptr<osg::Vec4Array>>::iterator clr_arr_it
-	//			= clr_arr_map.find(tile_name);
-
-	//		if (vec_arr_it != vec_arr_map.end())
-	//		{
-	//			vec_arr = vec_arr_it->second;
-	//			clr_arr = clr_arr_it->second;
-	//		}
-	//		else
-	//		{
-	//			vec_arr = new osg::Vec3Array;
-	//			clr_arr = new osg::Vec4Array;
-	//			vec_arr_map[tile_name] = vec_arr;
-	//			clr_arr_map[tile_name] = clr_arr;
-	//			tile_row_col_map[tile_name] = std::pair<int, int>(row, col);
-	//		}
-
-	//		vec_arr->push_back(pt1);
-	//		vec_arr->push_back(pt2);
-	//		vec_arr->push_back(pt3);
-	//		clr_arr->push_back(rgba1);
-	//		clr_arr->push_back(rgba2);
-	//		clr_arr->push_back(rgba3);
-	//	}
-
-	//	for (std::map<std::string, osg::ref_ptr<osg::Vec3Array>>::iterator
-	//		vec_arr_it = vec_arr_map.begin(); vec_arr_it != vec_arr_map.end(); ++vec_arr_it)
-	//	{
-	//		std::string tile_name = vec_arr_it->first;
-	//		std::map<std::string, osg::ref_ptr<osg::Vec4Array>>::iterator clr_arr_it
-	//			= clr_arr_map.find(tile_name);
-	//		std::map<std::string, std::pair<int, int>>::iterator row_col_it = tile_row_col_map.find(tile_name);
-
-	//		osg::ref_ptr<osg::Vec3Array> vec_arr = vec_arr_it->second;
-	//		osg::ref_ptr<osg::Vec4Array> clr_arr = clr_arr_it->second;
-	//		std::pair<int, int> row_col_pair = row_col_it->second;
-
-	//		if (vec_arr->size() == 0) { continue; }
-
-	//		osg::ref_ptr<TileFacesNode> tileFaceNode = nullptr;
-	//		TileFacesNodeMap::iterator tile_it = m_tileFacesNodes.find(tile_name);
-	//		if (tile_it != m_tileFacesNodes.end())
-	//		{
-	//			tileFaceNode = tile_it->second;
-	//		}
-	//		else
-	//		{
-	//			//tileFaceNode = TileFacesNode::createTileFacesNode(
-	//			//	row_col_pair.first, row_col_pair.second, m_tile_size);
-
-	//			//// m_faces->addChild(tileFaceNode->facesGeode());
-
-	//			//m_tileFacesNodes[tile_name] = tileFaceNode;
-	//			//tileFaceNode->facesThread()->startThread();
-
-	//			continue;
-	//		}
-
-	//		tileFaceNode->facesThread()->setVerticsAndColors(*vec_arr, *clr_arr);
-	//	}
-
-
-	//}
-
-
 	void Scene3DNode::subMesh(const realm::Mesh::Ptr& mesh)
 	{
 		return;
@@ -812,34 +663,68 @@ namespace MyREALM
 			(*ind_arr)[i * 3 + 1] = static_cast<GLuint>(faces[i * 3 + 1]);
 			(*ind_arr)[i * 3 + 2] = static_cast<GLuint>(faces[i * 3 + 2]);
 		}
+		cv::Mat cvTexRGBA;
+		cv::cvtColor(cvTex, cvTexRGBA, cv::COLOR_BGRA2RGBA);
 
 		osg::ref_ptr<osg::Image> osg_texImg = new osg::Image();
-		osg_texImg->allocateImage(cvTex.cols, cvTex.rows, 4, GL_BGRA, GL_UNSIGNED_BYTE, 1);
+		osg_texImg->allocateImage(cvTexRGBA.cols, cvTexRGBA.rows, 1, GL_RGBA, GL_UNSIGNED_BYTE, 1);
+
+		unsigned int newTotalSize = osg_texImg->computeRowWidthInBytes(cvTexRGBA.cols,
+			GL_RGBA, GL_UNSIGNED_BYTE, 1) * cvTexRGBA.rows * 1;
 		unsigned char* im_data = osg_texImg->data();
-		memcpy(im_data, cvTex.data, cvTex.cols * cvTex.rows * 4 * sizeof(unsigned char));
+		memcpy(im_data, cvTexRGBA.data, newTotalSize * sizeof(unsigned char));
 		osg_texImg->flipVertical();
 
+		std::string save_osgb_filepath = "";
+		if (m_update_mesh_count % 2 == 0)
+		{
+			save_osgb_filepath = _mesh_output_directory + "/mesh_update.osgb";
+		}
 
-		osg::ref_ptr<osg::Geode> newMeshGeode = createMeshGeode(vec_arr, clr_arr,
-			tex_arr, ind_arr, osg_texImg);
+		m_meshThread->updateMeshGeode(vec_arr, clr_arr,
+			tex_arr, ind_arr, osg_texImg, save_osgb_filepath);
 
-		osg::Node* old_MeshNode = m_mesh->getChild(0);
-		m_mesh->replaceChild(old_MeshNode, newMeshGeode);
-
-		std::string mesh_node_filename = _mesh_output_directory + "/mesh.osgb";
-
-		osgDB::writeNodeFile(*m_mesh.get(), mesh_node_filename);
+		
+		m_update_mesh_count++;
 	}
 
-
-	void Scene3DNode::subOrtho(const realm::CvGridMap& map, uint8_t zone, char band)
+	void Scene3DNode::subUpdateElevationOrtho(
+		const realm::CvGridMap& map, uint8_t zone, char band)
 	{
 
+		if (!m_tile_mesh)
+		{
+			std::string tile_lod_dir = _mesh_output_directory + "/mesh";
+			if (!io::dirExists(tile_lod_dir))
+				io::createDir(tile_lod_dir);
+
+			m_tile_mesh = std::make_shared<TileMesh>(
+				osg::Vec2(0, 0), 500.0f, 0.8f, 4,
+				tile_lod_dir, 4);
+
+			osg::ref_ptr<osg::Group> tileMeshGroup = m_tile_mesh->meshNode();
+			osg::StateSet* tile_SS = tileMeshGroup->getOrCreateStateSet();
+			tile_SS->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+
+			m_mesh->addChild(tileMeshGroup);
+		}
+
+		osg::Vec2 roi = osg::Vec2(map.roi().x, map.roi().y)
+			- osg::Vec2(_gnss_base_utm[0], _gnss_base_utm[1]);
+		
+		if (map.exists("elevation") && map.exists("color_rgb")) 
+		{
+			TileGridMap::Ptr dom = std::make_shared<TileGridMap>(map.size().width,
+				map.size().height, CV_8UC3, roi, map.resolution());
+			cv::cvtColor(map["color_rgb"], dom->map, cv::COLOR_RGBA2RGB);
+
+			TileGridMap::Ptr dsm = std::make_shared<TileGridMap>(map.size().width,
+				map.size().height, CV_32FC1, roi, map.resolution());
+			map["elevation"].copyTo(dsm->map);
+
+			m_tile_mesh->updateTileGridMap(dsm, dom);
+		}
 	}
 
-	void Scene3DNode::subElevation(const realm::CvGridMap& map, uint8_t zone, char band)
-	{
-
-	}
 
 }

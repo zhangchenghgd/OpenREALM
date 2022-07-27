@@ -96,14 +96,14 @@ void DataManagerWidget::updateTreeItems()
     visual_line_item->setData(0, Qt::UserRole, 2);
 
     QTreeWidgetItem* sparse_item = new QTreeWidgetItem;
-    sparse_item->setText(0, QStringLiteral("稀疏点云"));
-    sparse_item->setIcon(0, QIcon(":/images/resource/images/red_plane_16px.png"));
+    sparse_item->setText(0, QStringLiteral("点云(估算)"));
+    sparse_item->setIcon(0, QIcon(":/images/resource/images/points_yellow_30px.png"));
     sparse_item->setCheckState(0, Qt::Checked);
     sparse_item->setData(0, Qt::UserRole, 3);
 
     QTreeWidgetItem* dense_item = new QTreeWidgetItem;
-    dense_item->setText(0, QStringLiteral("密集点云"));
-    dense_item->setIcon(0, QIcon(":/images/resource/images/red_plane_16px.png"));
+    dense_item->setText(0, QStringLiteral("点云(过滤)"));
+    dense_item->setIcon(0, QIcon(":/images/resource/images/points_red_30px.png"));
     dense_item->setCheckState(0, Qt::Checked);
     dense_item->setData(0, Qt::UserRole, 4);
 

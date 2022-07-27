@@ -2,8 +2,13 @@
 #define MYREALM_FRUSTUMSCENENODE_H
 
 #include "MyREALM_Core_Exports.h"
+#include <deque>
 #include <osg/Geode>
 #include <osg/Image>
+#include <osg/Callback>
+#include <osg/StateSet>
+#include <OpenThreads/Thread>
+#include <OpenThreads/Mutex>
 #include <realm_core/camera.h>
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -11,6 +16,8 @@
 
 namespace MyREALM
 {
+
+	class ArImageUpdateCallback;
 
 	struct Frustum
 	{
@@ -85,7 +92,53 @@ namespace MyREALM
 
 	osg::ref_ptr<osg::Geode> generateARImageNode(
 		const realm::camera::Pinhole::ConstPtr& cam, double zFar,
-		osg::Image* image);
+		ArImageUpdateCallback* clb);
+
+	void removeArImageUpdateCallback(osg::Geode* geode, ArImageUpdateCallback* clb);
+
+
+	/**
+	 * @brief 轨迹线接收集合顶点线程.
+	 */
+	class ArImageReceiverThread : public OpenThreads::Thread
+	{
+	public:
+		ArImageReceiverThread();
+		~ArImageReceiverThread();
+
+		virtual int cancel();
+		virtual void run();
+
+		void setImage(int w, int h,
+			GLenum pixelFormat, GLenum type,
+			unsigned char* data);
+
+		bool getImage(osg::ref_ptr<osg::Image>& img);
+
+		void clear();
+
+		inline bool isDirty() const { return _img_que.size() > 0; }
+
+	protected:
+		OpenThreads::Mutex _mutex;
+		std::deque<osg::ref_ptr<osg::Image>> _img_que;
+		size_t _max_que_size;
+		bool _done;
+	};
+
+
+	class ArImageUpdateCallback :public osg::StateAttributeCallback
+	{
+	public:
+		ArImageUpdateCallback(ArImageReceiverThread* p_thread);
+		~ArImageUpdateCallback();
+
+		virtual void operator () (osg::StateAttribute*, osg::NodeVisitor*) override;
+
+	protected:
+		ArImageReceiverThread* m_thread;
+	};
+
 }
 
 

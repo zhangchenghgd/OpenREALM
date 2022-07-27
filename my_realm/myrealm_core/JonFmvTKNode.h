@@ -31,7 +31,8 @@ namespace MyREALM
 			Disconnect = 0,
 			Connecting = 1,
 			ConnectSuccess = 2,
-			ConnectFailed = 3
+			ConnectFailed = 3,
+			FrameRecieved = 4
 		};
 
 		JonFmvTKNode(const NodeParas& node_paras);

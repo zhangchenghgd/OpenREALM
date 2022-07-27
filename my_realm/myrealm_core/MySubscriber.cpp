@@ -12,8 +12,7 @@ namespace MyREALM
 		m_SubSparseFun(NULL),
 		m_SubMeshFunc(NULL),
 		m_SubImageFunc(NULL), 
-		m_SubOrthoFunc(NULL), 
-		m_SubElevationFunc(NULL)
+		m_CvGridMapFunc(NULL)
 	{
 
 	}
@@ -95,19 +94,11 @@ namespace MyREALM
 		}
 	}
 
-	void MySubscriber::subOrtho(const realm::CvGridMap& ortho, uint8_t zone, char band)
+	void MySubscriber::subCvGridMap(const realm::CvGridMap& ortho, uint8_t zone, char band)
 	{
-		if (m_SubOrthoFunc)
+		if (m_CvGridMapFunc)
 		{
-			m_SubOrthoFunc(ortho, zone, band);
-		}
-	}
-
-	void MySubscriber::subElevation(const realm::CvGridMap& elevation, uint8_t zone, char band)
-	{
-		if (m_SubElevationFunc)
-		{
-			m_SubElevationFunc(elevation, zone, band);
+			m_CvGridMapFunc(ortho, zone, band);
 		}
 	}
 
@@ -150,14 +141,9 @@ namespace MyREALM
 		m_SubImageFunc = func;
 	}
 
-	void MySubscriber::bindSubOrthoFunc(SubCvGridMapFun func)
+	void MySubscriber::bindCvGridMapFunc(SubCvGridMapFun func)
 	{
-		m_SubOrthoFunc = func;
-	}
-
-	void MySubscriber::bindSubElevationFunc(SubCvGridMapFun func)
-	{
-		m_SubElevationFunc = func;
+		m_CvGridMapFunc = func;
 	}
 
 	void MySubscriber::bindSubOutDirFunc(SubOutDirFun func)

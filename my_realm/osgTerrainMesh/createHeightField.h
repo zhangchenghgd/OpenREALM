@@ -10,4 +10,5 @@ osg::Node* createHeightField(const std::string& heightFile, const std::string& t
 
 osg::Node* createHeightField2(const std::string& heightFile, const std::string& texFile);
 
+
 #endif // !OSGTERRAIN_HEIGHT_FIELD_H

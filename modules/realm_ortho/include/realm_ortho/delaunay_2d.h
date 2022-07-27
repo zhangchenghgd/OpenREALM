@@ -22,6 +22,13 @@ class Delaunay2D
   public:
     explicit Delaunay2D();
     std::vector<cv::Point2i> buildMesh(const CvGridMap &grid, const std::string &mask = "");
+
+    void buildMeshWidthIndexs(const CvGridMap& grid, 
+        size_t& vertics_num, size_t& face_num,
+        std::vector<cv::Point2i>& vertics, 
+        std::vector<size_t>& face_indexs,
+        const std::string& mask = "");
+
 };
 
 } // namespace realm

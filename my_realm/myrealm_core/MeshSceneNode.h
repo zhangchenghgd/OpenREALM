@@ -3,7 +3,9 @@
 
 #include "MyREALM_Core_Exports.h"
 
+#include <deque>
 #include <map>
+#include <osg/Geometry>
 #include <osg/Geode>
 #include <osg/Group>
 #include <osg/Callback>
@@ -12,46 +14,47 @@
 
 namespace MyREALM
 {
-	class FacesReceiverThread : public OpenThreads::Thread
+	class MeshReceiverThread : public OpenThreads::Thread
 	{
 	public:
-		FacesReceiverThread();
+		MeshReceiverThread();
+		~MeshReceiverThread();
 
 		virtual int cancel();
 		virtual void run();
 
-		void setVerticsAndColors(const osg::Vec3Array& arr, const osg::Vec4Array& color_arr,
-			const osg::Vec2Array& tex_coords,
-			const osg::UIntArray& index_arr);
+		void updateMeshGeode(osg::ref_ptr<osg::Vec3Array> vec_arr,
+			osg::ref_ptr<osg::Vec4Array> clr_arr,
+			osg::ref_ptr<osg::Vec2Array> texture_arr,
+			osg::ref_ptr<osg::UIntArray> face_ary,
+			osg::ref_ptr<osg::Image> texImg, const std::string& save_osgb_filepath = "");
 
-		bool getVerticsAndColors(osg::Vec3Array& arr, osg::Vec4Array& color_arr,
-			osg::Vec2Array& tex_coords,
-			osg::UIntArray& index_arr);
+		bool getMeshGeode(osg::ref_ptr<osg::Geode>& geod);
+
+		void clear();
+
+		inline bool isDirty() const { return _geod_que.size() > 0; }
 
 	protected:
 		OpenThreads::Mutex _mutex;
-		osg::ref_ptr<osg::Vec3Array> _lineVertics;
-		osg::ref_ptr<osg::Vec4Array> _colors;
-		osg::ref_ptr<osg::Vec2Array> _texCoords;
-		osg::ref_ptr<osg::UIntArray> _indexs;
+		std::deque<osg::ref_ptr<osg::Geode>> _geod_que;
+		size_t _max_que_size;
 		bool _done;
-		bool _dirty;
 	};
 
 
-	class FacesDrawCallback :public osg::DrawableUpdateCallback
+	class MeshNodeCallback :public osg::NodeCallback
 	{
 	public:
-		FacesDrawCallback(FacesReceiverThread* p_thread);
-		~FacesDrawCallback();
+		MeshNodeCallback(MeshReceiverThread* p_thread);
+		~MeshNodeCallback();
 
-		virtual void update(osg::NodeVisitor* nv, osg::Drawable* drawable) override;
+		virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) override;
 
 	protected:
-		FacesReceiverThread* m_thread;
+		MeshReceiverThread* m_thread;
 	};
 
-	osg::ref_ptr<osg::Geode> createFacesGeode(FacesDrawCallback* clb);
 
 	osg::ref_ptr<osg::Geode> createMeshGeode(
 		osg::ref_ptr<osg::Vec3Array> vec_arr,

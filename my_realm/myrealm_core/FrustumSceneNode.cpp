@@ -215,7 +215,9 @@ namespace MyREALM
 		geod->addDrawable(geom_outline);
 
 
+#if 0
 		{
+			// 添加坐标轴 X-red Y-green Z-blue
 			osg::ref_ptr<osg::Geometry> axis_geom = new osg::Geometry;
 			osg::ref_ptr<osg::Vec3Array> vec_arr2 = new osg::Vec3Array;
 			vec_arr2->push_back(osg::Vec3(0, 0, 0)* zFar * 0.5);
@@ -250,10 +252,12 @@ namespace MyREALM
 			axis_geom->getOrCreateStateSet()->setAttribute(line_w2, osg::StateAttribute::ON);
 			axis_geom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
+
 			geod->addChild(axis_geom);
 		}
 
 
+#endif // 0
 
 
 		return geod;
@@ -262,7 +266,7 @@ namespace MyREALM
 
 	osg::ref_ptr<osg::Geode> generateARImageNode(
 		const realm::camera::Pinhole::ConstPtr& cam, double zFar,
-		osg::Image* image)
+		ArImageUpdateCallback* clb)
 	{
 		int w = cam->width();
 		int h = cam->height();
@@ -322,7 +326,8 @@ namespace MyREALM
 		//将图像关联到Texture 2D对象
 		osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D;
 		tex->setDataVariance(osg::Object::DYNAMIC);
-		tex->setImage(image);
+		//tex->setImage(image);
+		tex->setUpdateCallback(clb);
 
 		// 创建纹理对象后,释放内部的ref_ptr<Image>,删除Image图像。
 		tex->setUnRefImageDataAfterApply(false);
@@ -331,6 +336,7 @@ namespace MyREALM
 
 		state->setMode(GL_BLEND, osg::StateAttribute::ON);
 		state->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+
 
 		////打开混合
 		//osg::BlendFunc* bf = new osg::BlendFunc(
@@ -343,9 +349,135 @@ namespace MyREALM
 		//state->setAttributeAndModes(af);
 
 		geod->setStateSet(state);
-
+		
 		return geod.get();
 	}
 
+	void removeArImageUpdateCallback(osg::Geode* geode, ArImageUpdateCallback* clb)
+	{
+		osg::StateSet* ar_ss = geode->getStateSet();
+		osg::StateAttribute* ar_sta = ar_ss->getTextureAttribute(0, osg::StateAttribute::TEXTURE);
+		if (ar_sta)
+		{
+			if (ar_sta->getUpdateCallback() == clb)
+			{
+				ar_sta->setUpdateCallback(nullptr);
+			}
+		}
+		
+	}
+
+
+	ArImageReceiverThread::ArImageReceiverThread() :OpenThreads::Thread()
+	{
+		_max_que_size = 2;
+		_img_que.resize(0);
+	}
+
+	ArImageReceiverThread::~ArImageReceiverThread()
+	{
+		this->clear();
+	}
+
+	int ArImageReceiverThread::cancel()
+	{
+		_done = true;
+		while (isRunning()) YieldCurrentThread();
+		return 0;
+	}
+
+	void ArImageReceiverThread::run()
+	{
+		_done = false;
+		do
+		{
+			YieldCurrentThread();
+
+		} while (!_done);
+	}
+
+	void ArImageReceiverThread::setImage(
+		int w, int h,
+		GLenum pixelFormat, GLenum type,
+		unsigned char* data)
+	{
+		osg::ref_ptr<osg::Image> _img = new osg::Image;
+		_img->allocateImage(w, h, 1, pixelFormat, type, 1);
+		_img->setAllocationMode(osg::Image::NO_DELETE);
+
+		int img_s = w;
+		int img_t = h;
+		int img_r = 1;
+		GLenum pix_fmt = pixelFormat;
+		GLenum data_type = type;
+		unsigned int packing = 1;
+		GLint inTexFmt = GL_RGB;
+		unsigned int newTotalSize = _img->computeRowWidthInBytes(img_s,
+			pixelFormat, type, packing) * img_t * img_r;
+		unsigned char* im_data = _img->data();
+		memcpy(im_data, data, newTotalSize * sizeof(unsigned char));
+		_img->flipVertical();
+
+		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+		if (_img_que.size() > _max_que_size)
+		{
+			_img_que.erase(_img_que.begin(), _img_que.begin() + 1);
+		}
+
+		_img_que.push_back(_img);
+	}
+
+	bool ArImageReceiverThread::getImage(osg::ref_ptr<osg::Image>& img)
+	{
+		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+		if (isDirty())
+		{
+			img = _img_que.front();
+			_img_que.pop_front();
+			return true;
+		}
+		return false;
+	}
+
+	void ArImageReceiverThread::clear()
+	{
+		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+		if (_img_que.size() > 0)
+		{
+			_img_que.clear();
+		}
+	}
+
+	ArImageUpdateCallback::ArImageUpdateCallback(ArImageReceiverThread* p_thread)
+		:osg::StateAttributeCallback(), m_thread(p_thread)
+	{
+	}
+
+	ArImageUpdateCallback::~ArImageUpdateCallback()
+	{
+
+	}
+
+	void ArImageUpdateCallback::operator()(osg::StateAttribute* st, osg::NodeVisitor*)
+	{
+		if (!m_thread)
+		{
+			return;
+		}
+
+		osg::Texture2D* tex = dynamic_cast<osg::Texture2D*>(st);
+
+		if (!tex)
+		{
+			return;
+		}
+
+		osg::ref_ptr<osg::Image> img = nullptr;
+		if (m_thread->getImage(img))
+		{
+			tex->setImage(img);
+			tex->dirtyTextureObject();
+		}
+	}
 
 }

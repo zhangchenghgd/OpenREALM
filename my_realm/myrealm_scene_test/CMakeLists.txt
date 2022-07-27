@@ -1,17 +1,9 @@
 
-set(PROJECT_NAME osgTerrainMesh)
+set(PROJECT_NAME myrealm_scene_test)
 
 project(${PROJECT_NAME} LANGUAGES C CXX)
 
-
 find_package(Qt5 COMPONENTS Core)
-
-find_package(GDAL REQUIRED)
-
-
-find_package(OpenCV 4 REQUIRED)
-
-find_package(OpenSceneGraph 3.6.5 REQUIRED osgDB osgGA osgUtil osgText osgTerrain osgViewer osgWidget)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -45,16 +37,12 @@ add_executable(${PROJECT_NAME} ${HEAD_FILES} ${SRC_FILES} ${UI_FILES} ${QRC_FILE
 target_include_directories(${PROJECT_NAME} 
 	PRIVATE
 	"${CURRENT_SOURCE_DIRECTORY}"
-	"${OPENSCENEGRAPH_INCLUDE_DIR}"
-	${GDAL_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME} 
 	PRIVATE
 	Qt5::Core
-	${OPENSCENEGRAPH_LIBRARIES}
-	${GDAL_LIBRARIES}
-	${OpenCV_LIBRARIES}
+	myrealm_scene
 )
 
 set_target_properties(${PROJECT_NAME}  

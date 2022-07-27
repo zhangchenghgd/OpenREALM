@@ -249,6 +249,7 @@ namespace MyREALM
 		_publisher.insert({ "output/full/ortho", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "full/ortho") });
 		_publisher.insert({ "output/update/ortho", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "update/ortho") });
 		_publisher.insert({ "output/update/elevation", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "update/elevation")});
+		_publisher.insert({ "output/update/elevation_ortho", MyRealmSys::get_instance().getOrCreatePublisher(_topic_prefix + "update/elevation_ortho")});
 		linkStageTransport();
 	}
 
@@ -366,7 +367,8 @@ namespace MyREALM
 				UTMPose utm_pose = frame->getGnssUtm();
 
 				double gnss_base_lon, gnss_base_lat, gnss_base_alt;
-				if (utm2Wgs84Point(utm_pose.zone, utm_pose.band, utm_pose.easting, utm_pose.northing, utm_pose.altitude - 100.0,
+				if (utm2Wgs84Point(utm_pose.zone, utm_pose.band, 
+					utm_pose.easting, utm_pose.northing, 0.0, // utm_pose.altitude,
 					&gnss_base_lon, &gnss_base_lat, &gnss_base_alt))
 				{
 					_gnss_base = cv::Vec3d(gnss_base_lon, gnss_base_lat, gnss_base_alt);
@@ -509,7 +511,7 @@ namespace MyREALM
 			return;
 
 
-		//publisher->pubCvGridMap(map);
+		publisher->pubCvGridMap(map, zone, band);
 	}
 
 	bool StageNode::srvFinish()

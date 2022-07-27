@@ -133,6 +133,7 @@ class Mosaicing : public StageBase
     void initStageCallback() override;
     std::vector<Face> createMeshFaces(const CvGridMap::Ptr &map);
     Mesh::Ptr createMesh(const CvGridMap::Ptr& map);
+    Mesh::Ptr createDelaunayMesh(const CvGridMap::Ptr& map);
     bool buildMesh(const CvGridMap& grid, const std::string& mask, 
         const std::string& layer_elevation,
         const std::string& layer_color, Mesh& mesh);

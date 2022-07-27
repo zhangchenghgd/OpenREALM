@@ -41,7 +41,7 @@ MainWindow::MainWindow(QWidget* parent) :
 	mosaicing_stageNode(nullptr),
 	scene3DNode(nullptr),
 	frameViewNode(nullptr),
-	m_followFrameView(false),
+	m_followFrameView(0),
 	m_stageDirDateTime(QString())
 {
 	ui->setupUi(this);
@@ -51,6 +51,8 @@ MainWindow::MainWindow(QWidget* parent) :
 	ui->action_resume->setEnabled(false);
 	ui->action_stop->setEnabled(false);
 	ui->action_openProduction->setEnabled(false);
+	ui->action_flowFrameCenter->setEnabled(false);
+	ui->action_flowFrameView->setEnabled(false);
 
 	m_frameWidget = new FrameWidget(this);
 	m_dataMgrWidget = new DataManagerWidget(this);
@@ -70,6 +72,7 @@ MainWindow::MainWindow(QWidget* parent) :
 
 	m_uavConDialog = new UAVConDialog(this);
 
+	m_flightLineRoot = new osg::Group;
 	m_flightGnssLine = new osg::Group;
 	m_flightVisualLine = new osg::Group;
 	m_sparseCloud = new osg::Group;
@@ -172,7 +175,8 @@ void MainWindow::displayTrackedImage(const cv::Mat& img)
 
 	if (!image.isNull())
 	{
-		m_frameWidget->setFrameImage(QPixmap::fromImage(image));
+		//m_frameWidget->setFrameImage(QPixmap::fromImage(image));
+		m_frameWidget->setFrameImage(image);
 	}
 }
 
@@ -181,13 +185,69 @@ void MainWindow::joUAVConnectStatusChanged(int status)
 	emit joUAVConnectStatusChangedSignal(status);
 }
 
-void MainWindow::followFrameViewChanged(const osg::Matrix& view_mat)
+void MainWindow::followFrameViewChanged(const osg::Matrix& view_mat,
+	int cam_w, int cam_h, double f, double cx, double cy)
 {
-	if (m_followFrameView)
+	if (m_followFrameView == 1)
 	{
 		osg::Vec3d eye, center, up;
 		view_mat.getLookAt(eye, center, up);
 		m_trackball_manipulator->setTransformation(eye, center, up);
+
+
+		{
+			osg::Camera* vcam = this->m_osgWidget->getOsgViewer()->getCamera();
+			osg::Viewport* viewport = vcam->getViewport();
+
+			// 计算投影矩阵
+			osg::Matrix proj_mat = osg::Matrix::identity();
+			// 计算投影矩阵
+			double view_ratio = 1.0 * viewport->width() / viewport->height();
+			double cam_ratio = 1.0 * cam_w / cam_h;
+			double fovy, fovx;
+			if (view_ratio >= cam_ratio)
+			{
+				fovy = 2.0 * atan((cam_h / 2.0) / f);
+				fovx = fovy * view_ratio;
+			}
+			else
+			{
+				fovx = 2.0 * atan((cam_w / 2.0) / f);
+				fovy = fovx / view_ratio;
+			}
+
+			double zNear = 0.0001;
+			double zFar = 10000.0;
+
+			double left = -zNear * tan(fovy / 2.0) * view_ratio;
+			double right = zNear * tan(fovy / 2.0) * view_ratio;
+			double bottom = -zNear * tan(fovy / 2.0);
+			double top = zNear * tan(fovy / 2.0);
+			proj_mat.makeFrustum(left * 1.2, right * 1.2, bottom * 1.2, top * 1.2, zNear, zFar);
+			vcam->setProjectionMatrix(proj_mat);
+		}
+
+	}
+	else if (m_followFrameView == 2)
+	{
+		osg::Vec3d eye0, center0, up0;
+		m_terrain_manipulator->getTransformation(eye0, center0, up0);
+		osg::Vec3 vec0 = center0 - eye0;
+		vec0.normalize();
+
+		osg::Vec3d eye, center, up;
+		view_mat.getLookAt(eye, center, up);
+		osg::Vec3 vec = center - eye;
+		vec.normalize();
+		center = eye;
+
+		double dist = (eye0 - eye).length();
+		static double MAX_LOOK_DISTANCE = 10000;
+		if (dist > MAX_LOOK_DISTANCE) dist = MAX_LOOK_DISTANCE;
+
+		eye = center - (vec0 * dist);
+
+		m_terrain_manipulator->setTransformation(eye, center, up0);
 	}
 }
 
@@ -247,6 +307,8 @@ void MainWindow::on_action_start_triggered()
 	ui->action_pause->setEnabled(true);
 	ui->action_resume->setEnabled(false);
 	ui->action_stop->setEnabled(true);
+	ui->action_flowFrameCenter->setEnabled(true);
+	ui->action_flowFrameView->setEnabled(true);
 
 	m_uavConDialog->setWindowModality(Qt::NonModal);
 	m_uavConDialog->showNormal();
@@ -270,7 +332,6 @@ void MainWindow::on_action_pause_triggered()
 	ui->action_stop->setEnabled(true);
 }
 
-
 void MainWindow::on_action_resume_triggered()
 {
 	//if(exivNode) exivNode->resume();
@@ -288,7 +349,6 @@ void MainWindow::on_action_resume_triggered()
 	ui->action_resume->setEnabled(false);
 	ui->action_stop->setEnabled(true);
 }
-
 
 void MainWindow::on_action_stop_triggered()
 {
@@ -346,6 +406,10 @@ void MainWindow::on_action_stop_triggered()
 	ui->action_pause->setEnabled(false);
 	ui->action_resume->setEnabled(false);
 	ui->action_stop->setEnabled(false);
+	ui->action_flowFrameCenter->setEnabled(false);
+	ui->action_flowFrameView->setEnabled(false);
+
+	ui->action_homeView->trigger();
 }
 
 void MainWindow::create_exivNode()
@@ -408,7 +472,7 @@ void MainWindow::create_scene3DNode()
 	this->m_sparseCloud->addChild(sparse);
 	this->m_denseCloud->addChild(dense);
 	this->m_faces->addChild(mesh);
-
+	
 	//MyREALM::FollowFrameViewCLB followCLB = std::bind(&MainWindow::followFrameViewChanged,
 	//	this, std::placeholders::_1);
 	//scene3DNode->bindFollowFrameViewCLB(followCLB);
@@ -516,45 +580,72 @@ void MainWindow::setupStatusBar()
 
 void MainWindow::on_action_flowFrameView_triggered(bool check)
 {
-	m_followFrameView = check;
-	if (m_followFrameView)
+	ui->action_flowFrameCenter->setChecked(false);
+	m_followFrameView = check ? 1 : 0;
+	m_flightLineRoot->setNodeMask(1);
+
+	if (!scene3DNode) { return; }
+
+	if (m_followFrameView == 1)
 	{
 		MyREALM::FollowFrameViewCLB followCLB = std::bind(&MainWindow::followFrameViewChanged,
-			this, std::placeholders::_1);
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+			std::placeholders::_4, std::placeholders::_5, std::placeholders::_6);
 		scene3DNode->bindFollowFrameViewCLB(followCLB);
-		m_osgWidget->getOsgViewer()->setCameraManipulator(m_trackball_manipulator.get(), false);
+		m_osgWidget->getOsgViewer()->setCameraManipulator(m_trackball_manipulator.get());
+		m_flightLineRoot->setNodeMask(0);
 	}
 	else
 	{
 		scene3DNode->bindFollowFrameViewCLB(NULL);
-		m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get(), false);
+		m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get());
 	}
 
-	
 }
 
+void MainWindow::on_action_flowFrameCenter_triggered(bool check)
+{
+	ui->action_flowFrameView->setChecked(false);
+	m_followFrameView = check ? 2 : 0;
+	m_flightLineRoot->setNodeMask(1);
+
+	if (!scene3DNode) { return; }
+
+	if (m_followFrameView == 2)
+	{
+		MyREALM::FollowFrameViewCLB followCLB = std::bind(&MainWindow::followFrameViewChanged,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+			std::placeholders::_4, std::placeholders::_5, std::placeholders::_6);
+		m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get());
+		scene3DNode->bindFollowFrameViewCLB(followCLB);
+	}
+	else
+	{
+		scene3DNode->bindFollowFrameViewCLB(NULL);
+		m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get());
+	}
+}
 
 void MainWindow::on_action_homeView_triggered()
 {
 	ui->action_flowFrameView->setChecked(false);
-	m_followFrameView = false;
-	m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get(), false);
+	ui->action_flowFrameCenter->setChecked(false);
+	m_followFrameView = 0;
+	m_flightLineRoot->setNodeMask(1);
+	m_osgWidget->getOsgViewer()->setCameraManipulator(m_terrain_manipulator.get());
 	osg::BoundingSphere bs = m_sceneRoot->computeBound();
 	osg::Vec3 center = bs.center();
 	float r =  bs.radius();
 
-	osg::Vec3 vec(-r, r, -r / 2);
-	osg::Vec3 eye = center - vec;
-	osg::Vec3 right = vec ^ osg::Vec3(0, 0, 1);
-	osg::Vec3 up = right ^ vec;
-
+	osg::Vec3 vec(0, 0, r * 2.0);
+	osg::Vec3 eye = center + vec;
+	osg::Vec3 up(0.0, 1.0, 0.0);
 
 	m_terrain_manipulator->setHomePosition(eye, center, up);
 
 
 	m_terrain_manipulator->home(0);
 }
-
 
 void MainWindow::on_action_openProduction_triggered()
 {
@@ -581,17 +672,13 @@ void MainWindow::on_joUAVConnectStatusChanged(int status)
 	static QMap<int, QString> status_labels = {
 		{0,QStringLiteral("未连接.")},
 		{1,QStringLiteral("连接中...")},
-		{2,QStringLiteral("连接成功!")},
+		{2,QStringLiteral("连接成功，准备接收航摄视频图像...")},
 		{3,QStringLiteral("连接失败!")},
+		{4,QStringLiteral("连接成功，接收到航摄视频图像!")},
 	};
-
-	QString sta = status_labels.value(status, QStringLiteral("未知状态"));
-	m_uavConDialog->setText(sta);
-
 
 	if (status == MyREALM::JonFmvTKNode::ConnectSuccess)
 	{
-		m_uavConDialog->hideAfter(4);
 
 		this->m_connStatusLabel->setPixmap(QPixmap(":/images/resource/images/signal_16px.png"));
 		this->m_connStatusLabel->setToolTip(QStringLiteral("已连接"));
@@ -615,10 +702,16 @@ void MainWindow::on_joUAVConnectStatusChanged(int status)
 		this->m_connStatusLabel->setToolTip(QStringLiteral("连接中"));
 		this->m_nodeStatus->setText(QStringLiteral("待处理..."));
 	}
+	else if (status == MyREALM::JonFmvTKNode::FrameRecieved)
+	{
+		m_uavConDialog->hideAfter(2);
+		this->m_connStatusLabel->setPixmap(QPixmap(":/images/resource/images/signal_medium_16px.png"));
+		this->m_connStatusLabel->setToolTip(QStringLiteral("已连接"));
+		this->m_nodeStatus->setText(QStringLiteral("正在处理..."));
+	}
 	
-
-
-
+	QString sta = status_labels.value(status, QStringLiteral("未知状态"));
+	m_uavConDialog->setText(sta);
 
 }
 
@@ -640,8 +733,9 @@ void MainWindow::initOsg()
 	pViewer->getCamera()->getGraphicsContext()->getTraits();
 
 	m_sceneRoot = new osg::Group;
-	m_sceneRoot->addChild(m_flightGnssLine);
-	m_sceneRoot->addChild(m_flightVisualLine);
+	m_flightLineRoot->addChild(m_flightGnssLine);
+	m_flightLineRoot->addChild(m_flightVisualLine);
+	m_sceneRoot->addChild(m_flightLineRoot);
 	m_sceneRoot->addChild(m_sparseCloud);
 	m_sceneRoot->addChild(m_denseCloud);
 	m_sceneRoot->addChild(m_faces);

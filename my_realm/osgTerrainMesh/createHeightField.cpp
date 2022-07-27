@@ -1,4 +1,6 @@
 #include "createHeightField.h"
+#include <memory>
+#include <iomanip>
 #include <gdal_priv.h>
 #include <osg/Node>
 #include <osgViewer/Viewer>
@@ -6,15 +8,21 @@
 #include <osg/Shape>
 #include <osg/ShapeDrawable>
 #include <osg/Material>
+#include <osg/PagedLOD>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+#include <osgDB/FileNameUtils>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/TerrainManipulator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>
+#include <osgUtil/DelaunayTriangulator>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/GeometryTechnique>
 #include <osgTerrain/Layer>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
 
 
 osg::Node* createHeightField(const std::string& heightFile, const std::string& texFile)
@@ -255,3 +263,5 @@ osg::Node* createHeightField2(const std::string& heightFile, const std::string& 
 
 	return geode;
 }
+
+

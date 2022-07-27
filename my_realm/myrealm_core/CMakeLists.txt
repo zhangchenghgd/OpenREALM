@@ -86,6 +86,7 @@ target_link_libraries(${PROJECT_NAME}
 	${OpenCV_LIBRARIES}
 	${OPENSCENEGRAPH_LIBRARIES}
 	glog::glog
+	myrealm_scene
 	TJH_SRS
 	${JoFmvTK_LIB}
  )

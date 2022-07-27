@@ -37,14 +37,15 @@
 #include "SparseSceneNode.h"
 #include "MeshSceneNode.h"
 #include "FrustumSceneNode.h"
-
+#include "TileMesh.h"
 
 using namespace realm;
 
 namespace MyREALM
 {
 
-	using FollowFrameViewCLB = std::function<void(const osg::Matrix& view_mat)>;
+	using FollowFrameViewCLB = std::function<void(const osg::Matrix& view_mat,
+		int width, int height, double focal, double cx, double cy)>;
 
 	class MyREALM_Core_API Scene3DNode : public OpenThreads::Thread
 	{
@@ -77,6 +78,8 @@ namespace MyREALM
 
 		void bindFollowFrameViewCLB(FollowFrameViewCLB clb);
 
+		void writeMeshSrs(const std::string& filename);
+
 	private:
 
 		OpenThreads::Mutex _mutex;
@@ -101,8 +104,7 @@ namespace MyREALM
 		std::shared_ptr<MySubscriber> _sub_sparse;
 		std::shared_ptr<MySubscriber> _sub_dense;
 		std::shared_ptr<MySubscriber> _sub_faces;
-		std::shared_ptr<MySubscriber> _sub_ortho;
-		std::shared_ptr<MySubscriber> _sub_elevation;
+		std::shared_ptr<MySubscriber> _sub_elevation_ortho;
 
 		// working paths
 		std::string _path_working_directory;
@@ -132,12 +134,14 @@ namespace MyREALM
 		std::string _topic_sparse_in;
 		std::string _topic_dense_in;
 		std::string _topic_faces_in;
-		std::string _topic_update_ortho_in;
-		std::string _topic_update_elevation_in;
+		std::string _topic_update_elevation_ortho_in;
 		std::string _sub_output_dir_in;
 
 		cv::Vec3d _gnss_base_wgs84;
 		cv::Vec3d _gnss_base_utm;
+		std::string _gnss_base_utm_name;
+		int _gnss_base_utm_epsg;
+		bool _gnss_base_inited;
 
 		CameraSettings::Ptr _settings_camera;
 
@@ -156,15 +160,19 @@ namespace MyREALM
 		osg::ref_ptr<TrajDrawCallback> m_gnssTrajCLB;
 		osg::ref_ptr<SparseDrawCallback> m_sparseCLB;
 		osg::ref_ptr<SparseDrawCallback> m_denseCLB;
-		osg::ref_ptr<FacesDrawCallback> m_meshCLB;
+		osg::ref_ptr<MeshNodeCallback> m_meshCLB;
+		osg::ref_ptr<ArImageUpdateCallback> m_arCLB;
 
 		TrajReceiverThread* m_visualTrajThread;
 		TrajReceiverThread* m_gnssTrajThread;
 		SparseReceiverThread* m_sparseThread;
 		SparseReceiverThread* m_denseThread;
-		FacesReceiverThread* m_meshThread;
+		MeshReceiverThread* m_meshThread;
+		ArImageReceiverThread* m_arThread;
+		TileMesh::Ptr m_tile_mesh;
 
 		FollowFrameViewCLB m_followFrameViewCLB;
+		int m_update_mesh_count;
 
 		// Initialization
 		void readParams();
@@ -192,9 +200,7 @@ namespace MyREALM
 
 		void subMesh(const realm::Mesh::Ptr& mesh);
 
-		void subOrtho(const realm::CvGridMap& map, uint8_t zone, char band);
-
-		void subElevation(const realm::CvGridMap& map, uint8_t zone, char band);
+		void subUpdateElevationOrtho(const realm::CvGridMap& map, uint8_t zone, char band);
 
 	};
 }

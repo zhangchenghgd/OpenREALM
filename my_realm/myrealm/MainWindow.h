@@ -45,7 +45,8 @@ public:
 
     void joUAVConnectStatusChanged(int status);
 
-    void followFrameViewChanged(const osg::Matrix& view_mat);
+    void followFrameViewChanged(const osg::Matrix& view_mat, 
+        int width, int height, double focal, double cx, double cy);
 
 signals:
     void joUAVConnectStatusChangedSignal(int status);
@@ -59,6 +60,7 @@ private slots:
     void on_action_stop_triggered();
     void on_action_homeView_triggered();
     void on_action_flowFrameView_triggered(bool check);
+    void on_action_flowFrameCenter_triggered(bool check);
     void on_action_openProduction_triggered();
     void on_action_about_triggered();
     void on_joUAVConnectStatusChanged(int status);
@@ -91,11 +93,12 @@ private:
     QLabel* m_nodeStatus;
     QLabel* m_connStatusLabel;
     QLabel* m_connAddrLabel;
-    bool m_followFrameView;
+    int m_followFrameView;
     
     osg::ref_ptr<osgGA::TerrainManipulator> m_terrain_manipulator;
     osg::ref_ptr<osgGA::TrackballManipulator> m_trackball_manipulator;
     osg::ref_ptr<osg::Group> m_sceneRoot;
+    osg::ref_ptr<osg::Group> m_flightLineRoot;
     osg::ref_ptr<osg::Group> m_flightGnssLine;
     osg::ref_ptr<osg::Group> m_flightVisualLine;
     osg::ref_ptr<osg::Group> m_arImageViewNode;

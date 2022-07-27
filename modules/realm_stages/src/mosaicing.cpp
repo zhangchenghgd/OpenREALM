@@ -467,6 +467,101 @@ Mesh::Ptr realm::stages::Mosaicing::createMesh(const CvGridMap::Ptr& map)
     return mesh;
 }
 
+Mesh::Ptr realm::stages::Mosaicing::createDelaunayMesh(const CvGridMap::Ptr& map)
+{
+
+    Mesh::Ptr mesh = std::make_shared<Mesh>();
+    CvGridMap::Ptr mesh_sampled;
+    if (m_downsample_publish_mesh > 10e-6)
+    {
+        if (map && map->exists("elevation") && map->exists("color_rgb")) {
+
+            // Downsampling was set by the user in settings
+            LOG_F(INFO, "Downsampling mesh publish to %4.2f [m/gridcell]...", m_downsample_publish_mesh);
+            mesh_sampled = std::make_shared<CvGridMap>(map->cloneSubmap({ "elevation", "color_rgb" }));
+
+            cv::Mat valid = ((*mesh_sampled)["elevation"] == (*mesh_sampled)["elevation"]);
+
+            // TODO: Change resolution correction is not cool -> same in ortho rectification
+            // Check ranges of input elevation, this is necessary to correct resizing interpolation errors
+            double ele_min, ele_max;
+            cv::Point2i min_loc, max_loc;
+            cv::minMaxLoc((*mesh_sampled)["elevation"], &ele_min, &ele_max, &min_loc, &max_loc, valid);
+
+            mesh_sampled->changeResolution(m_downsample_publish_mesh);
+
+            // After resizing through bilinear interpolation there can occure bad elevation values at the border
+            cv::Mat mask_low = ((*mesh_sampled)["elevation"] < ele_min);
+            cv::Mat mask_high = ((*mesh_sampled)["elevation"] > ele_max);
+            (*mesh_sampled)["elevation"].setTo(std::numeric_limits<float>::quiet_NaN(), mask_low);
+            (*mesh_sampled)["elevation"].setTo(std::numeric_limits<float>::quiet_NaN(), mask_high);
+        }
+        else
+        {
+            LOG_F(WARNING, "Could not publish downsampled mesh, no global map existed.");
+        }
+    }
+    else
+    {
+        LOG_F(INFO, "No downsampling of mesh publish...");
+        // No downsampling was set
+        mesh_sampled = map;
+    }
+
+    int sampled_w = mesh_sampled->size().width;
+    int sampled_h = mesh_sampled->size().height;
+
+
+    size_t vert_num = 0;
+    size_t face_num = 0;
+    std::vector<cv::Point2i> vertics;
+    std::vector<size_t> faces_vert_indexs;
+
+    m_mesher->buildMeshWidthIndexs( *mesh_sampled, vert_num, face_num, 
+        vertics, faces_vert_indexs, "valid");
+    //std::vector<Face> faces = cvtToMesh((*mesh_sampled), "elevation", "color_rgb", vertex_ids);
+
+    if (vert_num > 0 && face_num > 0)
+    {
+        // OPTIONAL
+        cv::Mat color;
+        if (mesh_sampled->exists("color_rgb"))
+        {
+            color = (*mesh_sampled)["color_rgb"];
+        }
+
+        mesh->resize(vert_num, face_num);
+
+        cv::Point3d* verts = mesh->vertices();
+        cv::Vec4b* clrs = mesh->colors();
+        cv::Vec2f* texCoords = mesh->texCoords();
+        size_t* faces = mesh->faces();
+        cv::Mat& texture = mesh->texture();
+
+        for (size_t i = 0; i < vert_num; ++i)
+        {
+            verts[i] = mesh_sampled->atPosition3d(vertics[i].y, vertics[i].x, "elevation");
+            if (!color.empty())
+                clrs[i] = color.at<cv::Vec4b>(vertics[i].y, vertics[i].x);
+            else
+                clrs[i] = cv::Vec4b(0, 0, 0, 255);
+
+            texCoords[i] = cv::Vec2f(1.0f * vertics[i].x / sampled_w, 1.0f - (1.0f * vertics[i].y / sampled_h));
+        }
+
+        for (size_t j = 0; j < face_num; ++j)
+        {
+            faces[j * 3 + 0] = faces_vert_indexs[j * 3 + 0];
+            faces[j * 3 + 1] = faces_vert_indexs[j * 3 + 1];
+            faces[j * 3 + 2] = faces_vert_indexs[j * 3 + 2];
+        }
+
+
+        color.copyTo(texture);
+    }
+    return mesh;
+}
+
 bool realm::stages::Mosaicing::buildMesh(const CvGridMap& grid, const std::string& mask,
     const std::string& layer_elevation,
     const std::string& layer_color, Mesh& mesh)
@@ -551,15 +646,15 @@ void Mosaicing::publish(const Frame::Ptr &frame, const CvGridMap::Ptr &map, cons
   m_transport_cvgridmap(m_global_map->getSubmap({"color_rgb"}), m_utm_reference->zone, m_utm_reference->band, "output/full/ortho");
   m_transport_cvgridmap(update->getSubmap({"color_rgb"}), m_utm_reference->zone, m_utm_reference->band, "output/update/ortho");
   //m_transport_cvgridmap(update->getSubmap({"elevation", "valid"}), m_utm_reference->zone, m_utm_reference->band, "output/update/elevation");
-  
+  m_transport_cvgridmap(update->getSubmap({ "elevation", "color_rgb" }), m_utm_reference->zone, m_utm_reference->band, "output/update/elevation_ortho");
 
   if (m_publish_mesh_every_nth_kf > 0 && m_publish_mesh_every_nth_kf == m_publish_mesh_nth_iter)
   {
     /*std::vector<Face> faces = createMeshFaces(map);
     std::thread t(m_transport_mesh, faces, "output/mesh");*/
 
-    Mesh::Ptr mesh = createMesh(map);
-    std::thread t(m_transport_mesh, mesh, "output/mesh");
+      Mesh::Ptr mesh = createDelaunayMesh(map); //  createMesh(map);
+      std::thread t(m_transport_mesh, mesh, "output/mesh");
 
     t.detach();
     m_publish_mesh_nth_iter = 0;

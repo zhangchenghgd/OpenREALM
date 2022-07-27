@@ -1,13 +1,9 @@
 
-set(PROJECT_NAME osgTerrainMesh)
+set(PROJECT_NAME myrealm_scene)
 
 project(${PROJECT_NAME} LANGUAGES C CXX)
 
-
-find_package(Qt5 COMPONENTS Core)
-
 find_package(GDAL REQUIRED)
-
 
 find_package(OpenCV 4 REQUIRED)
 
@@ -15,18 +11,10 @@ find_package(OpenSceneGraph 3.6.5 REQUIRED osgDB osgGA osgUtil osgText osgTerrai
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-
 #查找设置当前文件夹中所有的头文件
 FILE(GLOB_RECURSE  HEAD_FILES ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
 #查找当前文件夹中的所有源代码文件，也可以通过Set命令将所有文件设置为一个变量
 FILE(GLOB_RECURSE  SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR} "*.cpp")
-
-FILE(GLOB_RECURSE  UI_FILES ${CMAKE_CURRENT_SOURCE_DIR} "*.ui")
-
-FILE(GLOB_RECURSE  QRC_FILES ${CMAKE_CURRENT_SOURCE_DIR} "*.qrc")
 
 FILE(GLOB_RECURSE  RC_FILES ${CMAKE_CURRENT_SOURCE_DIR} "*.rc")
 
@@ -34,24 +22,22 @@ source_group("Source Files" FILES ${SRC_FILES})
 
 source_group("Header Files" FILES ${HEAD_FILES})
 
-source_group("Ui Files" FILES ${UI_FILES})
-
-source_group("QResource Files" FILES ${QRC_FILES})
-
 source_group("Resource Files" FILES ${RC_FILES})
 
-add_executable(${PROJECT_NAME} ${HEAD_FILES} ${SRC_FILES} ${UI_FILES} ${QRC_FILES} ${RC_FILES})
+add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -DGLOG_NO_ABBREVIATED_SEVERITIES -DMyREALM_Scene_DLL_EXPORT)
+
+add_library(${PROJECT_NAME} SHARED ${HEAD_FILES} ${SRC_FILES} ${RC_FILES})
 
 target_include_directories(${PROJECT_NAME} 
-	PRIVATE
+	PUBLIC
 	"${CURRENT_SOURCE_DIRECTORY}"
 	"${OPENSCENEGRAPH_INCLUDE_DIR}"
 	${GDAL_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME} 
-	PRIVATE
-	Qt5::Core
+	PUBLIC
+	realm_io
 	${OPENSCENEGRAPH_LIBRARIES}
 	${GDAL_LIBRARIES}
 	${OpenCV_LIBRARIES}

@@ -12,18 +12,18 @@
 #include <osgTerrain/GeometryTechnique>
 #include <osgTerrain/Layer>
 #include <QCoreApplication>
-#include "createHeightField.h"
-#include "FacesSceneNode.h"
+#include "UpdateGridMapThread.h"
+#include "TileMesh.h"
 
 using namespace std;
-
 
 int main(int argc, char* argv[])
 {
 	QCoreApplication app(argc, argv);
 
-	std::string dom_path = "F:/OpenREALM2/lzd/dom/ortho.tif";
+	std::string dom_path = "F:/OpenREALM2/lzd/dom/ortho.jpg";
 	std::string dem_path = "F:/OpenREALM2/lzd/dsm/elevation.tif";
+	std::string lod_dirname = "F:/OpenREALM2/lzd/lod";
 
 	GDALAllRegister();
 	OGRRegisterAll();
@@ -46,13 +46,20 @@ int main(int argc, char* argv[])
 	osgViewer::Viewer viewer;
 	osg::ref_ptr<osg::Group> group = new osg::Group;
 
-	//group->addChild(createHeightField2(dem_path, dom_path));
+	MyREALM::TileMesh::Ptr tile_mesh = std::make_shared<MyREALM::TileMesh>(
+		osg::Vec2(1023.0, 1023.0), 500.0, 0.8, 3, lod_dirname);
 
-	MyREALM2::FacesReceiverThread* meshThread = new MyREALM2::FacesReceiverThread;
-	osg::ref_ptr<MyREALM2::FacesDrawCallback> meshCLB = new  MyREALM2::FacesDrawCallback(meshThread);
-	osg::ref_ptr<osg::Geode> mesh = MyREALM2::createFacesGeode(meshCLB);
+	/*MyREALM::TileMeshUpdateThread* tileThread = new MyREALM::TileMeshUpdateThread(
+		osg::Vec2(0, 0), 3940.0, 0.8, 5, lod_dirname);*/
 
-	group->addChild(mesh);
+	MyREALM::UpdateGridMapThread* updateGridThread = new MyREALM::UpdateGridMapThread(
+		dem_path, dom_path, tile_mesh.get());
+
+	/*osg::ref_ptr<MyREALM::TileMeshUpdateCallback> tileCLB = new  MyREALM::TileMeshUpdateCallback(tileThread);
+	
+	group->setUpdateCallback(tileCLB);*/
+
+	group->addChild(tile_mesh->meshNode());
 
 	viewer.setSceneData(group);
 	viewer.addEventHandler(new osgViewer::ThreadingHandler);
@@ -63,15 +70,17 @@ int main(int argc, char* argv[])
 	viewer.setCameraManipulator(new osgGA::TerrainManipulator);
 
 	viewer.setUpViewInWindow(100, 100, 800, 600);
-	viewer.getCamera()->setClearColor(osg::Vec4(0., 0., 0., 1.0));
+	//viewer.getCamera()->setClearColor(osg::Vec4(1., 1., 1., 1.0));
 
-	osgUtil::Optimizer optimizer;
-	optimizer.optimize(group.get());
-	viewer.realize();
+	//osgUtil::Optimizer optimizer;
+	//optimizer.optimize(group.get());
+	//viewer.realize();
 
-	meshThread->startThread();
+	//tileThread->startThread();
+	updateGridThread->startThread();
+	
 
-	return viewer.run();
+	viewer.run();
 
-	//return app.exec();
+	return EXIT_SUCCESS;
 }

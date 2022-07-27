@@ -62,21 +62,12 @@ namespace MyREALM
 	}
 
 
-	void MyPublisher::pubOrtho(const realm::CvGridMap& map, uint8_t zone, char band)
+	void MyPublisher::pubCvGridMap(const realm::CvGridMap& map, uint8_t zone, char band)
 	{
 		for (MySubscribers::iterator it = m_subscribers.begin();
 			it != m_subscribers.end(); ++it)
 		{
-			it->second->subOrtho(map, zone, band);
-		}
-	}
-
-	void MyPublisher::pubElevation(const realm::CvGridMap& map, uint8_t zone, char band)
-	{
-		for (MySubscribers::iterator it = m_subscribers.begin();
-			it != m_subscribers.end(); ++it)
-		{
-			it->second->subElevation(map, zone, band);
+			it->second->subCvGridMap(map, zone, band);
 		}
 	}
 

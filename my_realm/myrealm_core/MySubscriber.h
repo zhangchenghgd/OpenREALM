@@ -48,9 +48,7 @@ namespace MyREALM
 
 		void subFaces(const realm::Mesh::Ptr& mesh);
 
-		void subOrtho(const realm::CvGridMap& ortho, uint8_t zone, char band);
-
-		void subElevation(const realm::CvGridMap& elevation, uint8_t zone, char band);
+		void subCvGridMap(const realm::CvGridMap& ortho, uint8_t zone, char band);
 
 		void bindSubFrameFunc(SubFrameFun func);
 
@@ -70,9 +68,8 @@ namespace MyREALM
 
 		void bindSubImageFunc(SubImageFun func);
 
-		void bindSubOrthoFunc(SubCvGridMapFun func);
+		void bindCvGridMapFunc(SubCvGridMapFun func);
 
-		void bindSubElevationFunc(SubCvGridMapFun func);
 
 	private:
 		SubFrameFun m_SubFrameFunc;
@@ -84,8 +81,7 @@ namespace MyREALM
 		SubSparseFun m_SubSparseFun;
 		SubMeshFun m_SubMeshFunc;
 		SubImageFun m_SubImageFunc;
-		SubCvGridMapFun m_SubOrthoFunc;
-		SubCvGridMapFun m_SubElevationFunc;
+		SubCvGridMapFun m_CvGridMapFunc;
 
 	};
 
